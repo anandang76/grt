@@ -28,7 +28,7 @@ class AuthController extends Controller
 
     public function login(Request $r): array
     {
-        $data = $r->validate(['email' => 'required|email|max:190', 'password' => 'required|string|max:200']);
+        $data = $r->validate(['email' => 'required|email|max:190', 'password' => 'required|string|max:200', 'remember' => 'nullable|boolean']);
         $email = $this->email($data['email']);
         $this->throttle($email);
 
@@ -58,7 +58,7 @@ class AuthController extends Controller
 
     public function otpLogin(Request $r): array
     {
-        $data = $r->validate(['email' => 'required|email|max:190', 'code' => 'required|string']);
+        $data = $r->validate(['email' => 'required|email|max:190', 'code' => 'required|string', 'remember' => 'nullable|boolean']);
         $email = $this->email($data['email']);
         $this->throttle($email);
 
@@ -133,7 +133,7 @@ class AuthController extends Controller
 
     public function google(Request $r, GoogleVerifier $google): array
     {
-        $data = $r->validate(['credential' => 'required|string', 'mode' => 'required|in:signin,signup', 'phone' => 'nullable|string|max:20', 'terms' => 'nullable']);
+        $data = $r->validate(['credential' => 'required|string', 'mode' => 'required|in:signin,signup', 'phone' => 'nullable|string|max:20', 'terms' => 'nullable', 'remember' => 'nullable|boolean']);
         $claims = $google->verify($data['credential']) ?? $this->error('Google sign-in failed. Please try again.');
         $email = $this->email($claims['email']);
 
@@ -172,7 +172,8 @@ class AuthController extends Controller
     public function logout(Request $r): array
     {
         AuditLog::record('logout', $r->user()->id);
-        Auth::guard('web')->logout();
+        $r->user()->forceFill(['remember_until' => null])->save();
+        Auth::guard('web')->logout(); // rotates remember_token and expires the remember-me cookie
         $r->session()->invalidate();
         $r->session()->regenerateToken();
         return ['message' => 'You have been logged out.'];
@@ -207,10 +208,19 @@ class AuthController extends Controller
             $this->error($reason);
         }
         RateLimiter::clear('login:'.$email);
-        Auth::guard('web')->login($u);
+
+        // "Keep me logged in for today": remember-me cookie that expires at midnight (app timezone).
+        // Without it the session cookie dies when the browser closes (SESSION_EXPIRE_ON_CLOSE=true).
+        $remember = $r->boolean('remember');
+        $guard = Auth::guard('web');
+        if ($remember) {
+            $until = now()->endOfDay();
+            $guard->setRememberDuration(max(1, (int) ceil(now()->diffInMinutes($until))));
+        }
+        $guard->login($u, $remember);
         $r->session()->regenerate();
-        $u->forceFill(['last_login_at' => now()])->save();
-        AuditLog::record('login', $u->id, ['method' => $method], $u->id);
+        $u->forceFill(['last_login_at' => now(), 'remember_until' => $remember ? $until : null])->save();
+        AuditLog::record('login', $u->id, ['method' => $method] + ($remember ? ['remember' => 'today'] : []), $u->id);
 
         return ['user' => $u->toSelf()];
     }

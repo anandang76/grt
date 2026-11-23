@@ -16,7 +16,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name', 'email', 'phone', 'password', 'google_id', 'role', 'status', 'must_change_password',
-        'email_verified_at', 'terms_accepted_at', 'approved_by', 'approved_at', 'last_login_at',
+        'email_verified_at', 'terms_accepted_at', 'approved_by', 'approved_at', 'last_login_at', 'remember_until',
     ];
 
     protected $hidden = ['password', 'remember_token', 'google_id'];
@@ -28,6 +28,7 @@ class User extends Authenticatable
             'terms_accepted_at' => 'datetime',
             'approved_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'remember_until' => 'datetime',
             'must_change_password' => 'boolean',
             'password' => 'hashed',
         ];

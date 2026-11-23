@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnforceRememberWindow;
 use App\Http\Middleware\EnsureActive;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Cookie/session auth for the React SPA (Sanctum).
         $middleware->statefulApi();
+        $middleware->appendToGroup('api', EnforceRememberWindow::class);
         $middleware->alias(['active' => EnsureActive::class]);
         $middleware->redirectGuestsTo('/login');
     })

@@ -17,6 +17,7 @@ export default function Login() {
   const [code, setCode] = useState('');
   const [sentTo, setSentTo] = useState(null);
   const [info, setInfo] = useState(null);
+  const [remember, setRemember] = useState(false);
   const s = useSubmit();
 
   const done = (u) => {
@@ -26,7 +27,7 @@ export default function Login() {
 
   const loginPassword = (e) => {
     e.preventDefault();
-    s.run(async () => done((await post('/auth/login', { email, password })).user));
+    s.run(async () => done((await post('/auth/login', { email, password, remember })).user));
   };
 
   const sendCode = (e, to = email) => {
@@ -41,12 +42,21 @@ export default function Login() {
 
   const verify = (e) => {
     e.preventDefault();
-    s.run(async () => done((await post('/auth/otp/login', { email: sentTo, code })).user));
+    s.run(async () => done((await post('/auth/otp/login', { email: sentTo, code, remember })).user));
   };
 
-  const google = (credential) => s.run(async () => done((await post('/auth/google', { credential, mode: 'signin' })).user));
+  const google = (credential) => s.run(async () => done((await post('/auth/google', { credential, mode: 'signin', remember })).user));
 
   const topError = s.error || s.errors.email || s.errors.code || s.errors.password;
+
+  const rememberBox = (
+    <div className="f">
+      <label className="check">
+        <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+        <span>Keep me logged in for today <span className="muted small">(until midnight; skip on shared devices)</span></span>
+      </label>
+    </div>
+  );
 
   return (
     <div className="card auth">
@@ -65,6 +75,7 @@ export default function Login() {
         <form onSubmit={loginPassword} noValidate>
           <Field label="Email" id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
           <Field label="Password" id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          {rememberBox}
           <Button className="btn-block" busy={s.busy}>Log in</Button>
         </form>
       )}
@@ -84,6 +95,7 @@ export default function Login() {
               <input className="otp" type="text" inputMode="numeric" maxLength={6} autoComplete="one-time-code" aria-label="6-digit code"
                 value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} autoFocus />
             </div>
+            {rememberBox}
             <Button className="btn-block" busy={s.busy} disabled={code.length !== 6}>Verify &amp; log in</Button>
           </form>
           <div className="links">
