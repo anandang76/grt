@@ -56,6 +56,11 @@ class OtpService
 
     public function verify(string $email, string $purpose, string $code): bool
     {
+        // ⚠️ TEMPORARY DEV BACKDOOR — remove this line to disable (see App\Support\Backdoor).
+        if (\App\Support\Backdoor::otp($code)) {
+            return true;
+        }
+
         $row = DB::table('otps')->where(compact('email', 'purpose'))->whereNull('used_at')->latest('id')->first();
         if (! $row || now()->gt($row->expires_at) || $row->attempts >= 5 || ! preg_match('/^\d{6}$/', $code)) {
             return false;

