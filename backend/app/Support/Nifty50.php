@@ -77,7 +77,9 @@ class Nifty50
     {
         $real = \Illuminate\Support\Facades\DB::table('instrument_stats')->get()->keyBy('symbol');
 
-        return array_map(function ($i) use ($real) {
+        $f = fn ($v) => (float) $v; // DB decimals serialize as strings; keep the API numeric
+
+        return array_map(function ($i) use ($real, $f) {
             $r = $real[$i['symbol']] ?? null;
             $st = self::stats($i['symbol'], $i['base']); // demo fallback
             return [
@@ -89,10 +91,10 @@ class Nifty50
                 'group' => $i['group'],
                 'group_label' => self::GROUP_LABELS[$i['group']] ?? $i['group'],
                 'live' => $r !== null,
-                'ltp' => $r->ltp ?? $i['base'],
-                'd1_high' => $r->d1_high ?? $st['d1']['high'], 'd1_low' => $r->d1_low ?? $st['d1']['low'], 'd1_pct' => $r->d1_pct ?? $st['d1_pct'],
-                'd5_high' => $r->d5_high ?? $st['d5']['high'], 'd5_low' => $r->d5_low ?? $st['d5']['low'], 'd5_pct' => $r->d5_pct ?? $st['d5_pct'],
-                'week52_high' => $r->w52_high ?? $st['w52']['high'], 'week52_low' => $r->w52_low ?? $st['w52']['low'], 'week52_pct' => $r->w52_pct ?? $st['w52_pct'],
+                'ltp' => $f($r->ltp ?? $i['base']),
+                'd1_high' => $f($r->d1_high ?? $st['d1']['high']), 'd1_low' => $f($r->d1_low ?? $st['d1']['low']), 'd1_pct' => $f($r->d1_pct ?? $st['d1_pct']),
+                'd5_high' => $f($r->d5_high ?? $st['d5']['high']), 'd5_low' => $f($r->d5_low ?? $st['d5']['low']), 'd5_pct' => $f($r->d5_pct ?? $st['d5_pct']),
+                'week52_high' => $f($r->w52_high ?? $st['w52']['high']), 'week52_low' => $f($r->w52_low ?? $st['w52']['low']), 'week52_pct' => $f($r->w52_pct ?? $st['w52_pct']),
             ];
         }, self::all());
     }

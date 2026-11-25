@@ -29,7 +29,7 @@ function TokenBanner() {
 
 function SymbolRow({ item, active, onClick }) {
   // Real LTP + day % from the API; demo-only symbols fall back to the client generator.
-  const q = item.ltp != null ? { ltp: item.ltp, chp: item.chp ?? 0 } : quote(item.symbol);
+  const q = item.ltp != null ? { ltp: Number(item.ltp), chp: Number(item.chp) || 0 } : quote(item.symbol);
   const cls = !q ? '' : q.chp >= 0 ? 'pos' : 'neg';
   return (
     <button className={`wl-row${active ? ' on' : ''}`} onClick={onClick}>

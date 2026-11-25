@@ -25,7 +25,7 @@ class WatchlistController extends Controller
                 $r = $stats[$s] ?? null;
                 return [
                     'symbol' => $s, 'name' => $map[$s]['name'], 'kind' => $map[$s]['kind'],
-                    'ltp' => $r->ltp ?? null, 'chp' => $r->d1_pct ?? null, 'live' => $r !== null,
+                    'ltp' => $r ? (float) $r->ltp : null, 'chp' => $r ? (float) $r->d1_pct : null, 'live' => $r !== null,
                 ];
             })
             ->values()->all();

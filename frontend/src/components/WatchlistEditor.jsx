@@ -3,8 +3,9 @@ import { getInstruments } from '../lib/watchlist';
 import { Alert, Button } from './ui';
 
 const GROUP_ORDER = ['index', 'mcx', 'nifty50', 'next50'];
-const num = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
-const pct = (v) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+const nf = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
+const num = (v) => nf.format(Number(v) || 0);
+const pct = (v) => { const n = Number(v) || 0; return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`; };
 
 // Columns after the checkbox + symbol/name: LTP, then 52-week, 5-day, 1-day (high / low / %).
 const COLS = [
@@ -65,7 +66,7 @@ function GroupTable({ label, rows, picked, toggle, sort, setSort, atCap }) {
                   <td className="wl-name-cell">{r.name}</td>
                   {COLS.map((c) => (
                     <td key={c.key} className={`num${c.pct ? (r[c.key] >= 0 ? ' pos' : ' neg') : ''}`}>
-                      {c.pct ? pct(r[c.key]) : num.format(r[c.key])}
+                      {c.pct ? pct(r[c.key]) : num(r[c.key])}
                     </td>
                   ))}
                 </tr>
