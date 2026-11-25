@@ -41,7 +41,9 @@ class CandlesController extends Controller
             return response()->json(['symbol' => $symbol, 'date' => null, 'oneMin' => [], 'fiveMin' => []]);
         }
 
-        $rows = DB::table($table)->where('trade_date', $date)->orderBy('ts')->get();
+        // Serve all stored trading days (bounded) so users can scroll back to previous days.
+        $since = CarbonImmutable::parse($date)->subDays(45)->format('Y-m-d');
+        $rows = DB::table($table)->where('trade_date', '>=', $since)->orderBy('ts')->get();
 
         $oneMin = [];
         foreach ($rows as $r) {

@@ -9,6 +9,12 @@ const istFull = (t) => `${istDate(t)} ${istTime(t)}`;
 // tickMarkType: 0 Year, 1 Month, 2 DayOfMonth, 3+ Time
 const istTick = (t, type) => (type <= 2 ? istDate(t) : istTime(t));
 
+const VISIBLE_BARS = 90; // default window; scroll/zoom to see more
+function showLast(timeScale, len) {
+  if (len <= 0) return;
+  timeScale.setVisibleLogicalRange({ from: Math.max(0, len - VISIBLE_BARS), to: len + 4 });
+}
+
 // Theme colours pulled from the app's CSS variables so the chart matches light/dark mode.
 function themeColors() {
   const s = getComputedStyle(document.body);
@@ -109,7 +115,7 @@ export default function Chart({ bars, height = 420, label = '', tag = '', expand
     longStop.setData(data.longStop);
     shortStop.setData(data.shortStop);
     candle.setMarkers(markers(bars, c));
-    chart.timeScale().fitContent();
+    showLast(chart.timeScale(), bars.length); // default to the last ~90 candles
     renderLegend(bars[bars.length - 1], c);
 
     chart.subscribeCrosshairMove((p) => {
@@ -127,10 +133,17 @@ export default function Chart({ bars, height = 420, label = '', tag = '', expand
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [label, height, theme, bars.length > 0]);
 
-  // Live/incremental data updates — keep the current view, just refresh the data.
+  // Live/incremental data updates — track the right edge when you're there, else keep your view.
   useEffect(() => {
     const s = series.current;
-    if (!s || !bars.length) return;
+    if (!s || !bars.length || !chartRef.current) return;
+    const ts = chartRef.current.timeScale();
+    const prevLen = s.bars.length;
+    const prevLogical = ts.getVisibleLogicalRange();
+    const prevRange = ts.getVisibleRange();
+    const atRight = prevLogical ? prevLogical.to >= prevLen - 3 : true;
+    const delta = bars.length - prevLen;
+
     const data = seriesData(bars);
     s.candle.setData(data.candles);
     s.longStop.setData(data.longStop);
@@ -139,6 +152,12 @@ export default function Chart({ bars, height = 420, label = '', tag = '', expand
     s.bars = bars;
     s.byTime = new Map(bars.map((b) => [Number(b.ts_epoch), b]));
     renderLegend(bars[bars.length - 1], s.c);
+
+    // Track the newest bar at the user's current zoom when they're at the right edge;
+    // otherwise keep their exact view (so scrolling back to older days stays put).
+    if (atRight && prevLogical) ts.setVisibleLogicalRange({ from: prevLogical.from + delta, to: prevLogical.to + delta });
+    else if (!prevLogical) showLast(ts, bars.length);
+    else if (prevRange) { try { ts.setVisibleRange(prevRange); } catch { /* range may be out of data */ } }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bars]);
 
