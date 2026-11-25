@@ -168,6 +168,11 @@ export default function Chart({ bars, height = 420, label = '', tag = '', expand
     ts.applyOptions({ barSpacing: Math.max(1, Math.min(60, bs * factor)) });
   };
 
+  const reset = () => {
+    const ts = chartRef.current?.timeScale();
+    if (ts && series.current) showLast(ts, series.current.bars.length); // back to the last ~90 candles
+  };
+
   // The container is always rendered so the chart can attach once data loads (sync or async).
   return (
     <div className="chartWrap" style={{ height }}>
@@ -189,6 +194,7 @@ export default function Chart({ bars, height = 420, label = '', tag = '', expand
       {bars.length > 0 && (
         <div className="chartZoom">
           <button type="button" onClick={() => zoom(1 / 1.3)} aria-label="Zoom out">−</button>
+          <button type="button" className="chartZoom-reset" onClick={reset} title="Reset view (last ~90 candles)">Reset</button>
           <button type="button" onClick={() => zoom(1.3)} aria-label="Zoom in">+</button>
         </div>
       )}
