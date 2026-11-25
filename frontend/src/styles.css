@@ -302,3 +302,4 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .modal h2{margin:0 0 10px}
 .modal input[type=text]{width:100%;margin-top:4px}
 .modal-f{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.chart-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px;color:var(--muted);font-size:14px}

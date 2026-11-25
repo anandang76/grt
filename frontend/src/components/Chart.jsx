@@ -76,7 +76,7 @@ export default function Chart({ bars, height = 420, label = '', tag = '' }) {
   // without recreating, so the user's zoom/pan is preserved.
   useEffect(() => {
     const el = elRef.current;
-    if (!el) return undefined;
+    if (!el || !bars.length) return undefined; // wait for data (it may load async)
     const c = themeColors();
 
     const chart = createChart(el, {
@@ -123,8 +123,9 @@ export default function Chart({ bars, height = 420, label = '', tag = '' }) {
     const ro = new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth }));
     ro.observe(el);
     return () => { ro.disconnect(); chart.remove(); chartRef.current = null; series.current = null; };
+    // recreate when data first appears (bars may load async) or symbol/size/theme change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [label, height, theme]);
+  }, [label, height, theme, bars.length > 0]);
 
   // Live/incremental data updates — keep the current view, just refresh the data.
   useEffect(() => {
@@ -148,16 +149,19 @@ export default function Chart({ bars, height = 420, label = '', tag = '' }) {
     ts.applyOptions({ barSpacing: Math.max(1, Math.min(60, bs * factor)) });
   };
 
-  if (!bars.length) return <div className="empty">No data for this symbol.</div>;
+  // The container is always rendered so the chart can attach once data loads (sync or async).
   return (
     <div className="chartWrap" style={{ height }}>
       <div className="chartLegend" ref={legendRef} />
-      {tag && <span className="demo-tag">{tag}</span>}
+      {tag && bars.length > 0 && <span className="demo-tag">{tag}</span>}
       <div className="chartCanvas" ref={elRef} />
-      <div className="chartZoom">
-        <button type="button" onClick={() => zoom(1 / 1.3)} aria-label="Zoom out">−</button>
-        <button type="button" onClick={() => zoom(1.3)} aria-label="Zoom in">+</button>
-      </div>
+      {bars.length === 0 && <div className="chart-empty">No stored data yet — pull it in Admin → History data.</div>}
+      {bars.length > 0 && (
+        <div className="chartZoom">
+          <button type="button" onClick={() => zoom(1 / 1.3)} aria-label="Zoom out">−</button>
+          <button type="button" onClick={() => zoom(1.3)} aria-label="Zoom in">+</button>
+        </div>
+      )}
     </div>
   );
 }
