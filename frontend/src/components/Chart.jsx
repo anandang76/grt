@@ -39,7 +39,7 @@ function markers(bars, c) {
   return out;
 }
 
-export default function Chart({ bars, height = 360, label = '' }) {
+export default function Chart({ bars, height = 420, label = '', tag = '' }) {
   const elRef = useRef(null);
   const legendRef = useRef(null);
   const [theme, setTheme] = useState(0); // bump to force re-render on scheme change
@@ -62,15 +62,17 @@ export default function Chart({ bars, height = 360, label = '' }) {
       autoSize: false,
       layout: { background: { color: 'transparent' }, textColor: c.text, fontSize: 11, fontFamily: 'ui-monospace, Menlo, monospace' },
       grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
-      rightPriceScale: { borderColor: c.grid, scaleMargins: { top: 0.12, bottom: 0.08 } },
-      timeScale: { borderColor: c.grid, timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: 7, minBarSpacing: 2 },
+      rightPriceScale: { borderColor: c.grid, scaleMargins: { top: 0.1, bottom: 0.08 }, autoScale: true },
+      timeScale: { borderColor: c.grid, timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: 8, minBarSpacing: 1 },
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: { color: c.text, width: 1, style: LineStyle.Dashed, labelBackgroundColor: c.pri },
         horzLine: { color: c.text, width: 1, style: LineStyle.Dashed, labelBackgroundColor: c.pri },
       },
+      // Smooth, Zerodha-like interaction: drag to pan, wheel/pinch to zoom, drag either axis to scale.
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
-      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+      handleScale: { axisPressedMouseMove: { time: true, price: true }, mouseWheel: true, pinch: true },
+      kineticScroll: { touch: true, mouse: false },
     });
 
     const candle = chart.addCandlestickSeries({
@@ -120,6 +122,7 @@ export default function Chart({ bars, height = 360, label = '' }) {
   return (
     <div className="chartWrap" style={{ height }}>
       <div className="chartLegend" ref={legendRef} />
+      {tag && <span className="demo-tag">{tag}</span>}
       <div className="chartCanvas" ref={elRef} />
     </div>
   );

@@ -215,3 +215,7 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .edit-ico{flex:none;display:inline-grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);cursor:pointer}
 .edit-ico:hover{border-color:var(--pri);color:var(--pri)}
 .sec-f{display:flex;gap:8px;justify-content:flex-end}
+
+/* ---------- Chart demo tag + tighter cards ---------- */
+.chart-card{padding:6px}
+.demo-tag{position:absolute;top:8px;right:14px;z-index:3;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--warn);background:var(--warn-soft);padding:2px 7px;border-radius:99px;pointer-events:none}

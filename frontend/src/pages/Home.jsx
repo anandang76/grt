@@ -37,30 +37,31 @@ function SymbolRow({ item, active, onClick }) {
   );
 }
 
+function useChartHeights() {
+  const calc = () => {
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+    return { five: Math.max(340, Math.round(vh * 0.58)), one: Math.max(280, Math.round(vh * 0.46)) };
+  };
+  const [h, setH] = useState(calc);
+  useEffect(() => {
+    let t;
+    const on = () => { clearTimeout(t); t = setTimeout(() => setH(calc()), 150); };
+    window.addEventListener('resize', on);
+    return () => { clearTimeout(t); window.removeEventListener('resize', on); };
+  }, []);
+  return h;
+}
+
 function SymbolCharts({ symbol }) {
   const { oneMin, fiveMin } = useMemo(() => getCandles(symbol), [symbol]);
-  const q = quote(symbol);
-  const cls = !q ? '' : q.ch >= 0 ? 'pos' : 'neg';
+  const h = useChartHeights();
   return (
     <div className="stack">
-      <div className="sym-head">
-        <div className="sym-id">
-          <h1>{symbol}</h1>
-          <span className="muted">NSE</span>
-          <span className="badge b-pending" title="Simulated prices, not real market data">DEMO DATA</span>
-        </div>
-        {q && (
-          <div className={`sym-price ${cls}`}>
-            <b>{fmtPrice(q.ltp)}</b>
-            <span>{q.ch >= 0 ? '+' : ''}{q.ch.toFixed(2)} ({q.chp.toFixed(2)}%)</span>
-          </div>
-        )}
+      <div className="card chart-card">
+        <Chart bars={fiveMin} height={h.five} label={`${symbol} · 5m`} tag="DEMO" />
       </div>
       <div className="card chart-card">
-        <Chart bars={fiveMin} height={420} label={`${symbol} · 5m`} />
-      </div>
-      <div className="card chart-card">
-        <Chart bars={oneMin} height={320} label={`${symbol} · 1m`} />
+        <Chart bars={oneMin} height={h.one} label={`${symbol} · 1m`} tag="DEMO" />
       </div>
     </div>
   );
