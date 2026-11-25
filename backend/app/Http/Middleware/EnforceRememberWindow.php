@@ -15,6 +15,12 @@ class EnforceRememberWindow
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Needs a session (and thus the stateful-frontend middleware) to be meaningful.
+        // If one isn't set up for this request, there's nothing to enforce — don't touch it.
+        if (! $request->hasSession()) {
+            return $next($request);
+        }
+
         $guard = Auth::guard('web');
         $user = $guard->user(); // resolves the remember-me cookie when there is no session
 

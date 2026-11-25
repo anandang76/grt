@@ -47,6 +47,12 @@ cd frontend && npm run dev                # :5173  -> open this
 
 Vite proxies `/api` and `/sanctum` to Laravel, so the browser sees one origin (cookie auth just works).
 
+**Testing on a phone (same Wi‑Fi):** run `npm run dev -- --host` in `frontend/` and open
+`http://<your-mac-ip>:5173`. Session login works because `SANCTUM_STATEFUL_DOMAINS` in
+`backend/.env` already trusts private LAN ranges (`192.168.*`, `10.*`, `172.16.*`) alongside
+`localhost`/`127.0.0.1`. A request from any other origin isn't treated as a logged-in SPA, so
+add that origin there. In production, set this to your real domain only.
+
 **Email on/off switch:** set `EMAIL_SEND=No` in `backend/.env` to stop all outgoing email —
 every message is written to `backend/storage/logs/laravel.log` instead of being delivered
 (OTP codes still appear there, so logins keep working). Set `EMAIL_SEND=Yes` to send for real.
