@@ -78,7 +78,7 @@ function SignalBadge({ p1, p5 }) {
 }
 
 function SymbolCharts({ symbol, kind, tick, live }) {
-  const { oneMin, fiveMin } = useLiveCandles(symbol, kind, tick);
+  const { oneMin, fiveMin, refresh, refreshing } = useLiveCandles(symbol, kind, tick);
   const h = useChartHeight();
   const [solo, setSolo] = useState(null); // null = both side-by-side; '1m' | '5m' = expanded
   const tag = live ? '' : 'DEMO';
@@ -88,6 +88,12 @@ function SymbolCharts({ symbol, kind, tick, live }) {
 
   return (
     <div className="charts-wrap">
+      <div className="charts-top">
+        <span className="charts-top-sym">{symbol} <span className={`exch exch-${(live === false ? 'nse' : kind === 'commodity' ? 'mcx' : 'nse')}`}>{kind === 'commodity' ? 'MCX' : kind === 'index' ? 'IDX' : 'NSE'}</span></span>
+        <button className="btn btn-sm btn-line" onClick={refresh} disabled={refreshing} title="Clear today & re-pull per-minute data from Dhan">
+          {refreshing ? 'Refreshing…' : '↻ Refresh'}
+        </button>
+      </div>
       {oneMin.length > 0 && <SignalBadge p1={p1} p5={p5} />}
       <div className={`charts-row${solo ? ' solo' : ''}`}>
         {(!solo || solo === '1m') && (

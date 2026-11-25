@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getCandles } from '../lib/candles';
 import { marketOpen } from '../lib/market';
 import { computeUTBot } from '../lib/utBot';
@@ -25,7 +25,23 @@ function applyTick(bars, tfSec, sec, price) {
  */
 export function useLiveCandles(symbol, kind, tick) {
   const [data, setData] = useState({ oneMin: [], fiveMin: [] });
+  const [refreshing, setRefreshing] = useState(false);
   const st = useRef(null);
+
+  // Clear today's rows and re-pull per-minute data from Dhan (server deletes + reinserts +
+  // recomputes the UT Bot), then reseed the chart. Live ticks continue after.
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const r = await fetchStoredCandles(symbol, true);
+      if (r.oneMin?.length) {
+        st.current = { one: r.oneMin.map((b) => ({ ...b })), five: r.fiveMin.map((b) => ({ ...b })) };
+        setData({ oneMin: st.current.one, fiveMin: st.current.five });
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }, [symbol]);
 
   useEffect(() => {
     let alive = true;
@@ -56,5 +72,5 @@ export function useLiveCandles(symbol, kind, tick) {
     setData({ oneMin: s.one, fiveMin: s.five });
   }, [tick]);
 
-  return data;
+  return { oneMin: data.oneMin, fiveMin: data.fiveMin, refresh, refreshing };
 }

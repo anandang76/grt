@@ -53,3 +53,6 @@ Artisan::command('grt:candle-tables', function () {
 // or schedule `grt:refresh-history` directly in your VPS crontab (see README).
 Schedule::command('grt:refresh-history')->timezone('Asia/Kolkata')->dailyAt('16:00')->withoutOverlapping();
 Schedule::command('grt:refresh-history')->timezone('Asia/Kolkata')->dailyAt('23:00')->withoutOverlapping();
+
+// Keep today's candles current in the DB for open-market watchlist symbols (every 5 min).
+Schedule::command('grt:live-refresh')->everyFiveMinutes()->withoutOverlapping();
