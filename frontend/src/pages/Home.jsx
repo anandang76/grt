@@ -106,18 +106,29 @@ function SymbolCharts({ symbol, kind, tick, live }) {
 }
 
 // Navigation moved into the sidebar (the top header is hidden on the terminal for more chart space).
+// Collapsed by default — the account row toggles the menu open/closed.
 function SidebarNav() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
+  const [open, setOpen] = useState(false);
   const doLogout = async () => { await logout(); nav('/login', { replace: true, state: { flash: { type: 'ok', msg: 'You have been logged out.' } } }); };
+  const close = () => setOpen(false);
   return (
-    <nav className="wl-nav">
-      {isAdmin(user) && <NavLink to="/admin">Admin panel</NavLink>}
-      <NavLink to="/watchlist">Configure watchlist</NavLink>
-      <NavLink to="/broker">Dhan API token</NavLink>
-      <NavLink to="/profile">Profile &amp; password</NavLink>
-      <button type="button" onClick={doLogout}>Log out</button>
-      <div className="wl-who"><span className="wl-ava">{initials(user.name)}</span><span className="small muted">{user.email}</span></div>
+    <nav className={`wl-nav${open ? ' open' : ''}`}>
+      {open && (
+        <div className="wl-nav-links">
+          {isAdmin(user) && <NavLink to="/admin" onClick={close}>Admin panel</NavLink>}
+          <NavLink to="/watchlist" onClick={close}>Configure watchlist</NavLink>
+          <NavLink to="/broker" onClick={close}>Dhan API token</NavLink>
+          <NavLink to="/profile" onClick={close}>Profile &amp; password</NavLink>
+          <button type="button" onClick={doLogout}>Log out</button>
+        </div>
+      )}
+      <button type="button" className="wl-who" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span className="wl-ava">{initials(user.name)}</span>
+        <span className="small muted">{user.email}</span>
+        <span className="wl-who-chev">{open ? '▾' : '▸'}</span>
+      </button>
     </nav>
   );
 }

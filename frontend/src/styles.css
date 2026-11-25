@@ -317,9 +317,12 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .wl-nav a,.wl-nav button{display:block;text-align:left;padding:8px 10px;border-radius:6px;color:var(--text);background:none;border:0;font:inherit;font-size:13px;cursor:pointer}
 .wl-nav a:hover,.wl-nav button:hover{background:var(--bg);text-decoration:none}
 .wl-nav a.active{color:var(--pri);font-weight:600}
-.wl-who{display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--line);margin-top:2px}
+.wl-nav-links{display:flex;flex-direction:column;gap:1px;padding-bottom:4px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.wl-who{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;background:none;border:0;font:inherit;text-align:left;cursor:pointer;border-radius:6px}
+.wl-who:hover{background:var(--bg)}
+.wl-who .small{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-who-chev{font-size:10px;color:var(--muted)}
 .wl-ava{width:26px;height:26px;border-radius:50%;background:var(--pri-soft);color:var(--pri);display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
-.wl-who .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .charts-row{display:grid;gap:10px;grid-template-columns:1fr}
 @media(min-width:900px){.charts-row{grid-template-columns:1fr 1fr}.charts-row.solo{grid-template-columns:1fr}}
