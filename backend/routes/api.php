@@ -8,7 +8,9 @@ use App\Http\Controllers\BrokerController;
 use App\Http\Controllers\CandlesController;
 use App\Http\Controllers\WatchlistController;
 use App\Services\TickerToken;
+use App\Support\DhanCredentials;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 // Public settings the SPA needs at boot.
@@ -16,6 +18,19 @@ Route::get('/config', fn () => [
     'app_name' => config('app.name'),
     'google_client_id' => config('services.google.client_id') ?: null,
 ]);
+
+// Internal: the Node tick service fetches the Dhan token + securityId map here.
+// Authenticated by the shared TICKER_SECRET (not a user), never exposed to the browser.
+Route::get('/ticker/feed-config', function (Request $r) {
+    if (! hash_equals((string) config('services.ticker.secret'), (string) $r->header('X-Ticker-Secret'))) {
+        abort(403);
+    }
+    $c = DhanCredentials::current();
+    $instruments = DB::table('instrument_map')->get()
+        ->mapWithKeys(fn ($m) => [$m->symbol => ['securityId' => $m->security_id, 'segment' => $m->segment]]);
+
+    return ['token' => $c['token'], 'clientId' => $c['client_id'], 'instruments' => $instruments];
+});
 
 Route::prefix('auth')->name('auth.')->controller(AuthController::class)->group(function () {
     Route::get('/me', 'me')->name('me');

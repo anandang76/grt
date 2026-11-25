@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import Chart from '../components/Chart';
 import { Loading } from '../components/ui';
 import { useLiveCandles } from '../hooks/useLiveCandles';
+import { useTicker } from '../hooks/useTicker';
 import { quote } from '../lib/candles';
 import { isAdmin, useAuth } from '../lib/auth';
 import { fmtPrice, initials } from '../lib/format';
@@ -28,9 +29,10 @@ function TokenBanner() {
   );
 }
 
-function SymbolRow({ item, active, onClick }) {
-  // Real LTP + day % from the API; demo-only symbols fall back to the client generator.
-  const q = item.ltp != null ? { ltp: Number(item.ltp), chp: Number(item.chp) || 0 } : quote(item.symbol);
+function SymbolRow({ item, liveLtp, active, onClick }) {
+  // Live LTP from the websocket when present; else stored daily; else demo.
+  const ltp = liveLtp ?? (item.ltp != null ? Number(item.ltp) : null);
+  const q = ltp != null ? { ltp, chp: Number(item.chp) || 0 } : quote(item.symbol);
   const cls = !q ? '' : q.chp >= 0 ? 'pos' : 'neg';
   return (
     <button className={`wl-row${active ? ' on' : ''}`} onClick={onClick}>
@@ -53,8 +55,8 @@ function useChartHeight() {
   return h;
 }
 
-function SymbolCharts({ symbol, kind, live }) {
-  const { oneMin, fiveMin } = useLiveCandles(symbol, kind);
+function SymbolCharts({ symbol, kind, tick, live }) {
+  const { oneMin, fiveMin } = useLiveCandles(symbol, kind, tick);
   const h = useChartHeight();
   const [solo, setSolo] = useState(null); // null = both side-by-side; '1m' | '5m' = expanded
   const tag = live ? '' : 'DEMO';
@@ -102,6 +104,9 @@ export default function Home() {
 
   useEffect(() => { getWatchlist().then((r) => setWl(r.watchlist)).catch(() => setWl([])); }, []);
 
+  const symbols = wl ? wl.map((w) => w.symbol) : [];
+  const { ticks } = useTicker(symbols);
+
   const toggle = () => setCollapsed((v) => {
     const next = !v;
     try { localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0'); } catch { /* ignore */ }
@@ -137,7 +142,7 @@ export default function Home() {
             </div>
             <div className="wl-rows">
               {wl.map((item) => (
-                <SymbolRow key={item.symbol} item={item} active={item.symbol === active} onClick={() => select(item.symbol)} />
+                <SymbolRow key={item.symbol} item={item} liveLtp={ticks[item.symbol]?.ltp} active={item.symbol === active} onClick={() => select(item.symbol)} />
               ))}
             </div>
             <SidebarNav />
@@ -146,7 +151,7 @@ export default function Home() {
             {collapsed && (
               <button className="wl-show" onClick={toggle} aria-label="Show watchlist">☰ Watchlist</button>
             )}
-            {active && <SymbolCharts key={active} symbol={active} kind={activeItem?.kind} live={activeItem?.live} />}
+            {active && <SymbolCharts key={active} symbol={active} kind={activeItem?.kind} tick={ticks[active]} live={activeItem?.live} />}
           </section>
         </div>
       )}
