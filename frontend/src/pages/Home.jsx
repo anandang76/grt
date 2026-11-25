@@ -55,25 +55,52 @@ function useChartHeight() {
   return h;
 }
 
+// Combine the latest 1-min and 5-min UT Bot positions (1 = long, -1 = short) into one call.
+function combineSignal(p1, p5) {
+  if (p1 > 0 && p5 > 0) return { level: 'strong-buy', text: 'STRONG BUY', dir: 'up' };
+  if (p1 < 0 && p5 < 0) return { level: 'strong-sell', text: 'STRONG SELL', dir: 'down' };
+  if (p1 > 0 && p5 < 0) return { level: 'buy-caution', text: 'BUY · CAUTION', dir: 'up' };
+  if (p1 < 0 && p5 > 0) return { level: 'sell-caution', text: 'SELL · CAUTION', dir: 'down' };
+  return { level: 'neutral', text: 'NEUTRAL', dir: 'flat' };
+}
+
+function SignalBadge({ p1, p5 }) {
+  const s = combineSignal(p1, p5);
+  const arrow = s.dir === 'up' ? 'M12 19V5M5 12l7-7 7 7' : s.dir === 'down' ? 'M12 5v14M5 12l7 7 7-7' : 'M5 12h14';
+  const mark = (p) => (p > 0 ? '▲' : p < 0 ? '▼' : '–');
+  return (
+    <div className={`signal-badge sig-${s.level}`} title="Combined 1m + 5m UT Bot signal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d={arrow} /></svg>
+      <div className="sig-txt">{s.text}</div>
+      <div className="sig-sub"><span className={p1 >= 0 ? 'pos' : 'neg'}>1m {mark(p1)}</span><span className={p5 >= 0 ? 'pos' : 'neg'}>5m {mark(p5)}</span></div>
+    </div>
+  );
+}
+
 function SymbolCharts({ symbol, kind, tick, live }) {
   const { oneMin, fiveMin } = useLiveCandles(symbol, kind, tick);
   const h = useChartHeight();
   const [solo, setSolo] = useState(null); // null = both side-by-side; '1m' | '5m' = expanded
   const tag = live ? '' : 'DEMO';
   const toggle = (tf) => setSolo((v) => (v === tf ? null : tf));
+  const p1 = oneMin.at(-1)?.ut_bot_position ?? 0;
+  const p5 = fiveMin.at(-1)?.ut_bot_position ?? 0;
 
   return (
-    <div className={`charts-row${solo ? ' solo' : ''}`}>
-      {(!solo || solo === '1m') && (
-        <div className="card chart-card">
-          <Chart bars={oneMin} height={h} label={`${symbol} · 1m`} tag={tag} expanded={solo === '1m'} onToggleExpand={() => toggle('1m')} />
-        </div>
-      )}
-      {(!solo || solo === '5m') && (
-        <div className="card chart-card">
-          <Chart bars={fiveMin} height={h} label={`${symbol} · 5m`} tag={tag} expanded={solo === '5m'} onToggleExpand={() => toggle('5m')} />
-        </div>
-      )}
+    <div className="charts-wrap">
+      {oneMin.length > 0 && <SignalBadge p1={p1} p5={p5} />}
+      <div className={`charts-row${solo ? ' solo' : ''}`}>
+        {(!solo || solo === '1m') && (
+          <div className="card chart-card">
+            <Chart bars={oneMin} height={h} label={`${symbol} · 1m`} tag={tag} expanded={solo === '1m'} onToggleExpand={() => toggle('1m')} />
+          </div>
+        )}
+        {(!solo || solo === '5m') && (
+          <div className="card chart-card">
+            <Chart bars={fiveMin} height={h} label={`${symbol} · 5m`} tag={tag} expanded={solo === '5m'} onToggleExpand={() => toggle('5m')} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
