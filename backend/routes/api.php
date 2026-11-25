@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\HistoryController;
 use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
@@ -43,7 +44,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Watchlist (user manages their own) + NIFTY 50 reference list.
     Route::get('/watchlist', [WatchlistController::class, 'index']);
     Route::put('/watchlist', [WatchlistController::class, 'update']);
-    Route::get('/nifty50', [WatchlistController::class, 'nifty50']);
+    Route::get('/instruments', [WatchlistController::class, 'instruments']);
 
     // Shared Dhan API credentials — any logged-in user may view and update.
     // Client ID is set once; the access token is re-entered daily — updated separately.
@@ -58,6 +59,12 @@ Route::middleware(['auth:sanctum', 'active:admin,superadmin'])->prefix('admin')-
     Route::get('/users/{user}', [UserController::class, 'show']);
     Route::post('/users/{user}/action', [UserController::class, 'action']);
     Route::put('/users/{user}/watchlist', [UserController::class, 'setWatchlist']);
+
+    // History data tool: pull & store intraday candles per script/day.
+    Route::get('/history/symbols', [HistoryController::class, 'symbols']);
+    Route::get('/history/days/{symbol}', [HistoryController::class, 'days']);
+    Route::post('/history/update', [HistoryController::class, 'update']);
+    Route::delete('/history/{symbol}', [HistoryController::class, 'erase']);
 
     Route::middleware('active:superadmin')->group(function () {
         Route::get('/roles', [SystemController::class, 'roles']);

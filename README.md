@@ -75,3 +75,31 @@ behind TLS (`wss://`), and set `TICKER_URL` / `ALLOWED_ORIGINS` accordingly.
 
 `ticker/.env` sets `FEED=mock|kite|dhan`. `mock` is simulated **demo** data (the UI labels it). The `kite.js` and `dhan.js`
 adapters are documented stubs that will be implemented when broker credentials are available.
+
+## Daily data refresh (cron)
+
+`grt:refresh-history` pulls/refreshes intraday candles (+ UT Bot flags) for all instruments.
+It's a standalone artisan command, so you can schedule it any way you like.
+
+```sh
+cd backend
+php artisan grt:refresh-history                # latest trading day, all instruments (~7s)
+php artisan grt:refresh-history --days=5        # last 5 trading days
+php artisan grt:refresh-history --symbols=TCS,EICHERMOT
+php artisan schedule:list                       # shows the 16:00 & 23:00 IST jobs
+```
+
+**On a VPS — two options:**
+
+1. Laravel scheduler (recommended): one crontab line runs everything defined in `routes/console.php`
+   (currently 4pm and 11pm IST):
+   ```
+   * * * * * cd /path/to/GRT/backend && php artisan schedule:run >> /dev/null 2>&1
+   ```
+2. Or cron the command directly (set the server TZ to IST or adjust the hours):
+   ```
+   0 16 * * 1-5 cd /path/to/GRT/backend && php artisan grt:refresh-history >> storage/logs/refresh.log 2>&1
+   0 23 * * 1-5 cd /path/to/GRT/backend && php artisan grt:refresh-history >> storage/logs/refresh.log 2>&1
+   ```
+
+Until the Dhan feed is wired in, it stores demo candles; the schedule and storage stay the same for real data.

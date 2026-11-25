@@ -23,7 +23,7 @@ export default function Watchlist() {
   return (
     <div className="card">
       <h1>Configure watchlist</h1>
-      <p className="sub">Choose up to 10 NIFTY 50 stocks for your left menu. Each shows 1-min and 5-min charts with buy/sell signals.</p>
+      <p className="sub">Pick instruments for your left menu from indices, MCX commodities, NIFTY 50 and Nifty Next 50. Search and sort by 52-week high/low. Each shows 1-min and 5-min charts with buy/sell signals.</p>
       <WatchlistEditor initial={initial} onSave={save} onCancel={() => nav('/home')} saving={s.busy} error={s.error} />
     </div>
   );

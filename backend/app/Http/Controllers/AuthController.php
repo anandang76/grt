@@ -129,6 +129,7 @@ class AuthController extends Controller
             'terms_accepted_at' => now(),
         ]);
         AuditLog::record('signup', $u->id, ['via' => 'form'], $u->id);
+        WatchlistController::seedDefaults($u->id);
         $this->notify->signupReceived($u);
 
         return ['message' => 'Signup received. Your account is awaiting admin approval.'];
@@ -167,6 +168,7 @@ class AuthController extends Controller
             'terms_accepted_at' => now(),
         ]);
         AuditLog::record('signup', $u->id, ['via' => 'google'], $u->id);
+        WatchlistController::seedDefaults($u->id);
         $this->notify->signupReceived($u);
 
         return ['signup' => true, 'message' => 'Signup received. Your account is awaiting admin approval.'];

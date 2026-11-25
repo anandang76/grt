@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\DB;
 
 class WatchlistController extends Controller
 {
-    public const MAX = 10;
+    public const MAX = 25;
 
-    /** Symbols for a user, in sort order, enriched with NIFTY 50 metadata. */
+    /** A user's selected instruments, in their saved order. */
     public static function forUser(int $userId): array
     {
         $symbols = DB::table('watchlist_items')->where('user_id', $userId)->orderBy('sort')->pluck('symbol');
@@ -20,14 +20,23 @@ class WatchlistController extends Controller
 
         return $symbols
             ->filter(fn ($s) => isset($map[$s]))
-            ->map(fn ($s) => ['symbol' => $s, 'name' => $map[$s]['name']])
+            ->map(fn ($s) => ['symbol' => $s, 'name' => $map[$s]['name'], 'kind' => $map[$s]['kind']])
             ->values()->all();
     }
 
-    /** Replace a user's watchlist with the given ordered symbol list (validated, max MAX). */
+    /** Seed a new user's watchlist with the default instruments (the indices), if empty. */
+    public static function seedDefaults(int $userId): void
+    {
+        if (DB::table('watchlist_items')->where('user_id', $userId)->exists()) {
+            return;
+        }
+        self::setForUser($userId, Nifty50::DEFAULTS);
+    }
+
+    /** Replace a user's watchlist stocks with the given ordered list (validated, max MAX). */
     public static function setForUser(int $userId, array $symbols): array
     {
-        $clean = array_slice(Nifty50::filter($symbols), 0, self::MAX);
+        $clean = array_slice(Nifty50::filterPickable($symbols), 0, self::MAX);
 
         DB::transaction(function () use ($userId, $clean) {
             DB::table('watchlist_items')->where('user_id', $userId)->delete();
@@ -52,7 +61,7 @@ class WatchlistController extends Controller
     public function update(Request $r): array
     {
         $data = $r->validate([
-            'symbols' => 'present|array|max:60',
+            'symbols' => 'present|array|max:200',
             'symbols.*' => 'string|max:30',
         ]);
         $watchlist = self::setForUser($r->user()->id, $data['symbols']);
@@ -61,9 +70,9 @@ class WatchlistController extends Controller
         return ['watchlist' => $watchlist, 'max' => self::MAX];
     }
 
-    /** The full NIFTY 50 list for the config screen. */
-    public function nifty50(): array
+    /** All selectable instruments for the config screen, grouped and enriched (52w high/low, exchange). */
+    public function instruments(): array
     {
-        return ['symbols' => array_map(fn ($c) => ['symbol' => $c['symbol'], 'name' => $c['name']], Nifty50::all())];
+        return ['instruments' => Nifty50::enriched(), 'groups' => Nifty50::GROUP_LABELS, 'max' => self::MAX];
     }
 }

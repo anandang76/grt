@@ -2,11 +2,11 @@ import { api, put } from './api';
 
 export const MAX_WATCHLIST = 10;
 
-let nifty50Cache = null;
+let instrumentsCache = null;
 
-export async function getNifty50() {
-  if (!nifty50Cache) nifty50Cache = (await api('/nifty50')).symbols;
-  return nifty50Cache;
+export async function getInstruments() {
+  if (!instrumentsCache) instrumentsCache = await api('/instruments');
+  return instrumentsCache;
 }
 
 export const getWatchlist = () => api('/watchlist');

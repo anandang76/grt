@@ -22,6 +22,7 @@ const Users = lazy(() => import('./pages/admin/Users'));
 const UserDetail = lazy(() => import('./pages/admin/UserDetail'));
 const Roles = lazy(() => import('./pages/admin/Roles'));
 const Activity = lazy(() => import('./pages/admin/Activity'));
+const HistoryData = lazy(() => import('./pages/admin/HistoryData'));
 
 export default function App() {
   const { user } = useAuth();
@@ -42,6 +43,7 @@ export default function App() {
               <Route index element={<Overview />} />
               <Route path="users" element={<Users />} />
               <Route path="users/:id" element={<UserDetail />} />
+              <Route path="history" element={<HistoryData />} />
               <Route element={<RequireAuth roles={['superadmin']} />}>
                 <Route path="roles" element={<Roles />} />
                 <Route path="activity" element={<Activity />} />
