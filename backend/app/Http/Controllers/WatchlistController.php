@@ -24,7 +24,7 @@ class WatchlistController extends Controller
             ->map(function ($s) use ($map, $stats) {
                 $r = $stats[$s] ?? null;
                 return [
-                    'symbol' => $s, 'name' => $map[$s]['name'], 'kind' => $map[$s]['kind'],
+                    'symbol' => $s, 'name' => $map[$s]['name'], 'kind' => $map[$s]['kind'], 'exchange' => $map[$s]['exchange'],
                     'ltp' => $r ? (float) $r->ltp : null, 'chp' => $r ? (float) $r->d1_pct : null, 'live' => $r !== null,
                 ];
             })

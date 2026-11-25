@@ -327,3 +327,9 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .chart-ctl .demo-tag{position:static}
 .chart-expand{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--muted);cursor:pointer}
 .chart-expand:hover{color:var(--pri);border-color:var(--pri)}
+
+/* ---------- Exchange tag in watchlist ---------- */
+.exch{display:inline-block;margin-left:6px;font-size:9px;font-weight:700;letter-spacing:.02em;padding:1px 4px;border-radius:4px;vertical-align:middle;color:var(--muted);background:var(--bg)}
+.exch-nse{color:var(--pri);background:var(--pri-soft)}
+.exch-mcx{color:var(--warn);background:var(--warn-soft)}
+.exch-bse{color:var(--ok);background:var(--ok-soft)}

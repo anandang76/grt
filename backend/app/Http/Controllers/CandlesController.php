@@ -2,21 +2,35 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\DhanClient;
+use App\Services\HistoryService;
 use App\Support\CandleTable;
+use App\Support\DhanCredentials;
 use App\Support\Nifty50;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /** Serves stored candles (real Dhan data when available) for the terminal charts. */
 class CandlesController extends Controller
 {
-    public function show(string $symbol): JsonResponse
+    public function show(Request $r, string $symbol): JsonResponse
     {
         $symbol = strtoupper($symbol);
         if (! Nifty50::isValid($symbol)) {
             return response()->json(['message' => 'Unknown symbol.'], 404);
         }
+
+        // Near-live: pull today's latest intraday from Dhan before serving (used by the poller).
+        if ($r->boolean('fresh') && DhanClient::isMapped($symbol) && DhanCredentials::current()['token']) {
+            try {
+                app(HistoryService::class)->updateDay($symbol, CarbonImmutable::now('Asia/Kolkata')->format('Y-m-d'));
+            } catch (\Throwable $e) {
+                // ignore; fall back to whatever is stored
+            }
+        }
+
         if (! CandleTable::exists($symbol)) {
             return response()->json(['symbol' => $symbol, 'date' => null, 'oneMin' => [], 'fiveMin' => []]);
         }

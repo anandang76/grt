@@ -3,10 +3,10 @@ import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import Chart from '../components/Chart';
 import { Loading } from '../components/ui';
 import { useLiveCandles } from '../hooks/useLiveCandles';
-import { useTicker } from '../hooks/useTicker';
 import { quote } from '../lib/candles';
 import { isAdmin, useAuth } from '../lib/auth';
 import { fmtPrice, initials } from '../lib/format';
+import { marketOpen } from '../lib/market';
 import { getDhanStatus, getWatchlist } from '../lib/watchlist';
 
 const COLLAPSE_KEY = 'grt_wl_collapsed';
@@ -34,7 +34,7 @@ function SymbolRow({ item, active, onClick }) {
   const cls = !q ? '' : q.chp >= 0 ? 'pos' : 'neg';
   return (
     <button className={`wl-row${active ? ' on' : ''}`} onClick={onClick}>
-      <span className="wl-row-s">{item.symbol}</span>
+      <span className="wl-row-s">{item.symbol}<span className={`exch exch-${(item.exchange || 'nse').toLowerCase()}`}>{item.exchange || 'NSE'}</span></span>
       <span className={`wl-row-p ${cls}`}>{fmtPrice(q?.ltp)}</span>
       <span className={`wl-row-c ${cls}`}>{q ? `${q.chp >= 0 ? '▲' : '▼'} ${Math.abs(q.chp).toFixed(2)}%` : ''}</span>
     </button>
@@ -53,8 +53,8 @@ function useChartHeight() {
   return h;
 }
 
-function SymbolCharts({ symbol, tick, live }) {
-  const { oneMin, fiveMin } = useLiveCandles(symbol, tick);
+function SymbolCharts({ symbol, kind, live }) {
+  const { oneMin, fiveMin } = useLiveCandles(symbol, kind);
   const h = useChartHeight();
   const [solo, setSolo] = useState(null); // null = both side-by-side; '1m' | '5m' = expanded
   const tag = live ? '' : 'DEMO';
@@ -102,9 +102,6 @@ export default function Home() {
 
   useEffect(() => { getWatchlist().then((r) => setWl(r.watchlist)).catch(() => setWl([])); }, []);
 
-  const symbols = wl ? wl.map((w) => w.symbol) : [];
-  const { ticks, status } = useTicker(symbols);
-
   const toggle = () => setCollapsed((v) => {
     const next = !v;
     try { localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0'); } catch { /* ignore */ }
@@ -113,6 +110,8 @@ export default function Home() {
 
   const selected = params.get('s');
   const active = wl?.some((w) => w.symbol === selected) ? selected : wl?.[0]?.symbol;
+  const activeItem = wl?.find((w) => w.symbol === active);
+  const status = activeItem && marketOpen(activeItem.kind) ? 'live' : 'offline';
   const select = (sym) => setParams((p) => { p.set('s', sym); return p; }, { replace: true });
 
   if (wl === null) return <Loading />;
@@ -133,7 +132,7 @@ export default function Home() {
             <div className="wl-side-h">
               <button className="wl-collapse" onClick={toggle} title="Hide watchlist" aria-label="Hide watchlist">‹</button>
               <span>Watchlist</span>
-              <span className={`live-dot live-${status}`} title={status === 'live' ? 'Live' : status === 'connecting' ? 'Connecting' : 'Offline'} />
+              <span className={`live-dot live-${status}`} title={status === 'live' ? 'Market open' : 'Market closed'} />
               <Link to="/watchlist" className="wl-edit">Edit</Link>
             </div>
             <div className="wl-rows">
@@ -147,7 +146,7 @@ export default function Home() {
             {collapsed && (
               <button className="wl-show" onClick={toggle} aria-label="Show watchlist">☰ Watchlist</button>
             )}
-            {active && <SymbolCharts key={active} symbol={active} tick={ticks[active]} live={wl.find((w) => w.symbol === active)?.live} />}
+            {active && <SymbolCharts key={active} symbol={active} kind={activeItem?.kind} live={activeItem?.live} />}
           </section>
         </div>
       )}
