@@ -61,7 +61,7 @@ function GroupTable({ label, rows, picked, toggle, sort, setSort, atCap }) {
               return (
                 <tr key={r.symbol} className={on ? 'sel' : ''} onClick={() => !disabled && toggle(r.symbol)} style={{ cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
                   <td><input type="checkbox" checked={on} disabled={disabled} readOnly /></td>
-                  <td><b>{r.display}</b></td>
+                  <td><b>{r.display}</b>{r.live === false && <span className="idx-tag mcx" title="Demo data — not mapped to Dhan">demo</span>}</td>
                   <td className="wl-name-cell">{r.name}</td>
                   {COLS.map((c) => (
                     <td key={c.key} className={`num${c.pct ? (r[c.key] >= 0 ? ' pos' : ' neg') : ''}`}>

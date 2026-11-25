@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\AuditLog;
 use App\Services\HistoryService;
+use App\Services\StatsService;
 use App\Support\Nifty50;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -18,11 +19,11 @@ use Illuminate\Console\Command;
  */
 class RefreshHistory extends Command
 {
-    protected $signature = 'grt:refresh-history {--days=1 : Number of recent trading days} {--symbols= : Comma-separated symbols (default: all)}';
+    protected $signature = 'grt:refresh-history {--days=1 : Number of recent trading days} {--symbols= : Comma-separated symbols (default: all)} {--no-stats : Skip the daily quote-stats refresh}';
 
-    protected $description = 'Refresh intraday candles for all instruments (daily cron at 4pm & 11pm IST)';
+    protected $description = 'Refresh intraday candles + quote stats for all instruments (daily cron at 4pm & 11pm IST)';
 
-    public function handle(HistoryService $history): int
+    public function handle(HistoryService $history, StatsService $stats): int
     {
         $days = max(1, (int) $this->option('days'));
         $only = $this->option('symbols')
@@ -52,12 +53,16 @@ class RefreshHistory extends Command
         $bar = $this->output->createProgressBar($symbols->count());
         $bar->start();
 
+        $doStats = ! $this->option('no-stats');
         $rows = 0;
         $failed = [];
         foreach ($symbols as $sym) {
             try {
                 foreach ($dates as $date) {
                     $rows += $history->updateDay($sym, $date)['minutes'];
+                }
+                if ($doStats) {
+                    $stats->refresh($sym);
                 }
             } catch (\Throwable $e) {
                 $failed[] = $sym;

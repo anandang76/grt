@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Support\CandleTable;
+use App\Support\DhanCredentials;
 use App\Support\Nifty50;
 use App\Support\UtBot;
 use Carbon\CarbonImmutable;
@@ -96,12 +97,21 @@ class HistoryService
     }
 
     /**
-     * DEMO 1-minute bars for a trading day (09:15–15:30 IST = 375 bars), deterministic per
-     * symbol+date. Replace with Dhan intraday history when credentials + static IP are ready.
+     * 1-minute bars for a trading day. Uses real Dhan data when the symbol is mapped and
+     * credentials are set; otherwise falls back to the demo generator.
      *
      * @return array<int,array{ts:string,open:float,high:float,low:float,close:float,volume:int}>
      */
     private function fetchOneMinute(string $symbol, string $date): array
+    {
+        if (DhanClient::isMapped($symbol) && DhanCredentials::current()['token']) {
+            return app(DhanClient::class)->intradayDay($symbol, $date);
+        }
+        return $this->demoOneMinute($symbol, $date);
+    }
+
+    /** Deterministic demo 1-minute bars (09:15–15:30 IST) for symbols without a Dhan mapping. */
+    private function demoOneMinute(string $symbol, string $date): array
     {
         $day = CarbonImmutable::parse($date, 'Asia/Kolkata');
         if ($day->isWeekend() || $day->isFuture()) {

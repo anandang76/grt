@@ -72,11 +72,14 @@ class Nifty50
         ];
     }
 
-    /** Full instrument list enriched for the config screen. */
+    /** Full instrument list enriched for the config screen — real stats where available, else demo. */
     public static function enriched(): array
     {
-        return array_map(function ($i) {
-            $st = self::stats($i['symbol'], $i['base']);
+        $real = \Illuminate\Support\Facades\DB::table('instrument_stats')->get()->keyBy('symbol');
+
+        return array_map(function ($i) use ($real) {
+            $r = $real[$i['symbol']] ?? null;
+            $st = self::stats($i['symbol'], $i['base']); // demo fallback
             return [
                 'symbol' => $i['symbol'],
                 'name' => $i['name'],
@@ -85,10 +88,11 @@ class Nifty50
                 'kind' => $i['kind'],
                 'group' => $i['group'],
                 'group_label' => self::GROUP_LABELS[$i['group']] ?? $i['group'],
-                'ltp' => $i['base'],
-                'd1_high' => $st['d1']['high'], 'd1_low' => $st['d1']['low'], 'd1_pct' => $st['d1_pct'],
-                'd5_high' => $st['d5']['high'], 'd5_low' => $st['d5']['low'], 'd5_pct' => $st['d5_pct'],
-                'week52_high' => $st['w52']['high'], 'week52_low' => $st['w52']['low'], 'week52_pct' => $st['w52_pct'],
+                'live' => $r !== null,
+                'ltp' => $r->ltp ?? $i['base'],
+                'd1_high' => $r->d1_high ?? $st['d1']['high'], 'd1_low' => $r->d1_low ?? $st['d1']['low'], 'd1_pct' => $r->d1_pct ?? $st['d1_pct'],
+                'd5_high' => $r->d5_high ?? $st['d5']['high'], 'd5_low' => $r->d5_low ?? $st['d5']['low'], 'd5_pct' => $r->d5_pct ?? $st['d5_pct'],
+                'week52_high' => $r->w52_high ?? $st['w52']['high'], 'week52_low' => $r->w52_low ?? $st['w52']['low'], 'week52_pct' => $r->w52_pct ?? $st['w52_pct'],
             ];
         }, self::all());
     }
