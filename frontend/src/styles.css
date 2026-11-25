@@ -219,3 +219,74 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 /* ---------- Chart demo tag + tighter cards ---------- */
 .chart-card{padding:6px}
 .demo-tag{position:absolute;top:8px;right:14px;z-index:3;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--warn);background:var(--warn-soft);padding:2px 7px;border-radius:99px;pointer-events:none}
+
+/* ---------- Live status dot + chart zoom buttons ---------- */
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.live-live{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.live-connecting{background:var(--warn)}
+.live-offline{background:var(--err)}
+.chartZoom{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:3;display:flex;gap:1px;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.chartZoom button{width:34px;height:28px;border:0;background:var(--card);color:var(--text);font-size:17px;line-height:1;cursor:pointer}
+.chartZoom button:hover{background:var(--bg);color:var(--pri)}
+.chartZoom button+button{border-left:1px solid var(--line)}
+
+/* ---------- Admin: History data ---------- */
+.hist-wrap{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:760px){.hist-wrap{grid-template-columns:210px 1fr;align-items:start}}
+.hist-side{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.hist-side-h{padding:8px;border-bottom:1px solid var(--line)}
+.hist-side-h input{height:36px}
+.hist-syms{max-height:60vh;overflow-y:auto}
+@media(max-width:759px){.hist-syms{max-height:220px}}
+.hist-sym{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:8px 12px;background:none;border:0;border-bottom:1px solid var(--line);cursor:pointer;font:inherit;color:var(--text)}
+.hist-sym:hover{background:var(--bg)}
+.hist-sym.on{background:var(--pri-soft);box-shadow:inset 3px 0 0 var(--pri)}
+.hist-sym-s{font-weight:600;font-size:13px}
+.hist-sym-d{font-size:11px;color:var(--muted)}
+.hist-sym-d.has{color:var(--ok);font-weight:600}
+.hist-main{min-width:0}
+.hist-actions{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.hist-actions .grow{flex:1}
+.hist-days tr{cursor:pointer}
+.hist-days tbody tr.sel{background:var(--pri-soft)}
+.hist-days input[type=checkbox]{width:16px;height:16px;accent-color:var(--pri)}
+
+/* ---------- Toast (auto-dismissing flash) ---------- */
+.toast{position:fixed;z-index:50;right:16px;bottom:16px;max-width:360px;display:flex;align-items:flex-start;gap:10px;
+  padding:12px 14px;border-radius:10px;font-size:14px;font-weight:500;background:var(--card);color:var(--text);
+  border:1px solid var(--line);box-shadow:0 8px 28px rgba(0,0,0,.18);animation:toast-in .25s ease}
+.toast-ok{border-left:4px solid var(--ok)}
+.toast-err{border-left:4px solid var(--err)}
+.toast-info{border-left:4px solid var(--pri)}
+.toast span{flex:1}
+.toast button{flex:none;background:none;border:0;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:0 2px}
+.toast button:hover{color:var(--text)}
+@keyframes toast-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media(max-width:520px){.toast{left:16px;right:16px;bottom:16px;max-width:none}}
+@media(prefers-reduced-motion:reduce){.toast{animation:none}}
+
+/* ---------- Index tag in history/watchlist ---------- */
+.idx-tag{display:inline-block;margin-left:6px;font-size:9px;font-weight:700;color:var(--pri);background:var(--pri-soft);padding:1px 5px;border-radius:99px;vertical-align:middle}
+.idx-tag.mcx{color:var(--warn);background:var(--warn-soft)}
+
+/* ---------- Watchlist config: grouped sortable tables ---------- */
+.wl-editor-h input{max-width:340px}
+.wl-group{padding:0;margin-bottom:14px}
+.wl-table-scroll{overflow-x:auto}
+.wl-table{min-width:880px}
+.wl-table th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+.wl-table th.sortable:hover{color:var(--text)}
+.wl-table th.on{color:var(--pri)}
+.wl-table th.num,.wl-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+.wl-table tbody tr.sel{background:var(--pri-soft)}
+.wl-table input[type=checkbox]{width:16px;height:16px;accent-color:var(--pri)}
+.wl-name-cell{color:var(--muted)}
+/* keep these as real scrolling tables on mobile (override the stacked .rt layout) */
+@media(max-width:699px){
+  .wl-table{display:table}
+  .wl-table thead{display:table-header-group}
+  .wl-table tbody{display:table-row-group}
+  .wl-table tr{display:table-row;padding:0}
+  .wl-table td{display:table-cell;text-align:left;border-bottom:1px solid var(--line)}
+  .wl-table td::before{content:none}
+}

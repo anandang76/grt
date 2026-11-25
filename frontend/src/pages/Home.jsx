@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Chart from '../components/Chart';
 import { Loading } from '../components/ui';
+import { useLiveCandles } from '../hooks/useLiveCandles';
+import { useTicker } from '../hooks/useTicker';
 import { getCandles, quote } from '../lib/candles';
 import { fmtPrice } from '../lib/format';
 import { getDhanStatus, getWatchlist } from '../lib/watchlist';
@@ -25,8 +27,40 @@ function TokenBanner() {
   );
 }
 
-function SymbolRow({ item, active, onClick }) {
-  const q = quote(item.symbol);
+// Live prices for every watchlist symbol: the tick's movement applied on top of each
+// symbol's demo history (keeps the sidebar consistent with the charts).
+function useLivePrices(symbols, ticks) {
+  const [prices, setPrices] = useState({});
+  const ref = useRef({});
+  useEffect(() => {
+    for (const s of symbols) {
+      if (!ref.current[s]) {
+        const c = getCandles(s).oneMin;
+        ref.current[s] = { open: c[0]?.open ?? 100, price: c.at(-1)?.close ?? 100, prevLtp: null };
+      }
+    }
+  }, [symbols]);
+  useEffect(() => {
+    const next = {};
+    let changed = false;
+    for (const s of symbols) {
+      const t = ticks[s];
+      const r = ref.current[s];
+      if (!t || !r) continue;
+      if (r.prevLtp == null) r.prevLtp = t.ltp;
+      r.price = Math.max(1, +(r.price + (t.ltp - r.prevLtp)).toFixed(2));
+      r.prevLtp = t.ltp;
+      const ch = r.price - r.open;
+      next[s] = { ltp: r.price, ch, chp: r.open ? (ch / r.open) * 100 : 0 };
+      changed = true;
+    }
+    if (changed) setPrices((p) => ({ ...p, ...next }));
+  }, [ticks, symbols]);
+  return prices;
+}
+
+function SymbolRow({ item, live, active, onClick }) {
+  const q = live || quote(item.symbol);
   const cls = !q ? '' : q.ch >= 0 ? 'pos' : 'neg';
   return (
     <button className={`wl-row${active ? ' on' : ''}`} onClick={onClick}>
@@ -40,7 +74,7 @@ function SymbolRow({ item, active, onClick }) {
 function useChartHeights() {
   const calc = () => {
     const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-    return { five: Math.max(340, Math.round(vh * 0.58)), one: Math.max(280, Math.round(vh * 0.46)) };
+    return { top: Math.max(320, Math.round(vh * 0.56)), bottom: Math.max(300, Math.round(vh * 0.5)) };
   };
   const [h, setH] = useState(calc);
   useEffect(() => {
@@ -52,16 +86,16 @@ function useChartHeights() {
   return h;
 }
 
-function SymbolCharts({ symbol }) {
-  const { oneMin, fiveMin } = useMemo(() => getCandles(symbol), [symbol]);
+function SymbolCharts({ symbol, tick }) {
+  const { oneMin, fiveMin } = useLiveCandles(symbol, tick);
   const h = useChartHeights();
   return (
     <div className="stack">
       <div className="card chart-card">
-        <Chart bars={fiveMin} height={h.five} label={`${symbol} · 5m`} tag="DEMO" />
+        <Chart bars={oneMin} height={h.top} label={`${symbol} · 1m`} tag="DEMO" />
       </div>
       <div className="card chart-card">
-        <Chart bars={oneMin} height={h.one} label={`${symbol} · 1m`} tag="DEMO" />
+        <Chart bars={fiveMin} height={h.bottom} label={`${symbol} · 5m`} tag="DEMO" />
       </div>
     </div>
   );
@@ -75,6 +109,10 @@ export default function Home() {
   });
 
   useEffect(() => { getWatchlist().then((r) => setWl(r.watchlist)).catch(() => setWl([])); }, []);
+
+  const symbols = wl ? wl.map((w) => w.symbol) : [];
+  const { ticks, status } = useTicker(symbols);
+  const livePrices = useLivePrices(symbols, ticks);
 
   const toggle = () => setCollapsed((v) => {
     const next = !v;
@@ -103,11 +141,12 @@ export default function Home() {
             <div className="wl-side-h">
               <button className="wl-collapse" onClick={toggle} title="Hide watchlist" aria-label="Hide watchlist">‹</button>
               <span>Watchlist</span>
+              <span className={`live-dot live-${status}`} title={status === 'live' ? 'Live' : status === 'connecting' ? 'Connecting' : 'Offline'} />
               <Link to="/watchlist" className="wl-edit">Edit</Link>
             </div>
             <div className="wl-rows">
               {wl.map((item) => (
-                <SymbolRow key={item.symbol} item={item} active={item.symbol === active} onClick={() => select(item.symbol)} />
+                <SymbolRow key={item.symbol} item={item} live={livePrices[item.symbol]} active={item.symbol === active} onClick={() => select(item.symbol)} />
               ))}
             </div>
           </aside>
@@ -115,7 +154,7 @@ export default function Home() {
             {collapsed && (
               <button className="wl-show" onClick={toggle} aria-label="Show watchlist">☰ Watchlist</button>
             )}
-            {active && <SymbolCharts symbol={active} />}
+            {active && <SymbolCharts key={active} symbol={active} tick={ticks[active]} />}
           </section>
         </div>
       )}

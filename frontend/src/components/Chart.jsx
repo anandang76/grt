@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
 
-// Pull the current theme colours from the app's CSS variables so the chart matches
-// light/dark mode exactly.
+// lightweight-charts renders time in UTC; format axis + crosshair in IST instead.
+const IST = 'Asia/Kolkata';
+const istTime = (t) => new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: IST }).format(new Date(t * 1000));
+const istDate = (t) => new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', timeZone: IST }).format(new Date(t * 1000));
+const istFull = (t) => `${istDate(t)} ${istTime(t)}`;
+// tickMarkType: 0 Year, 1 Month, 2 DayOfMonth, 3+ Time
+const istTick = (t, type) => (type <= 2 ? istDate(t) : istTime(t));
+
+// Theme colours pulled from the app's CSS variables so the chart matches light/dark mode.
 function themeColors() {
   const s = getComputedStyle(document.body);
   const v = (name, fallback) => (s.getPropertyValue(name).trim() || fallback);
@@ -42,7 +49,9 @@ function markers(bars, c) {
 export default function Chart({ bars, height = 420, label = '', tag = '' }) {
   const elRef = useRef(null);
   const legendRef = useRef(null);
-  const [theme, setTheme] = useState(0); // bump to force re-render on scheme change
+  const chartRef = useRef(null);
+  const series = useRef(null);
+  const [theme, setTheme] = useState(0);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -51,25 +60,38 @@ export default function Chart({ bars, height = 420, label = '', tag = '' }) {
     return () => mq.removeEventListener('change', bump);
   }, []);
 
+  const renderLegend = (b, c) => {
+    const lg = legendRef.current;
+    if (!lg || !b) return;
+    const col = b.close >= b.open ? c.up : c.down;
+    lg.innerHTML =
+      `<b>${label}</b>` +
+      `<span>O <b style="color:${col}">${b.open.toFixed(2)}</b></span>` +
+      `<span>H <b style="color:${col}">${b.high.toFixed(2)}</b></span>` +
+      `<span>L <b style="color:${col}">${b.low.toFixed(2)}</b></span>` +
+      `<span>C <b style="color:${col}">${b.close.toFixed(2)}</b></span>`;
+  };
+
+  // Create the chart once per symbol/size/theme. Live data updates happen in the effect below
+  // without recreating, so the user's zoom/pan is preserved.
   useEffect(() => {
     const el = elRef.current;
-    if (!el || !bars.length) return undefined;
+    if (!el) return undefined;
     const c = themeColors();
 
     const chart = createChart(el, {
       width: el.clientWidth,
       height,
-      autoSize: false,
       layout: { background: { color: 'transparent' }, textColor: c.text, fontSize: 11, fontFamily: 'ui-monospace, Menlo, monospace' },
+      localization: { timeFormatter: istFull },
       grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
       rightPriceScale: { borderColor: c.grid, scaleMargins: { top: 0.1, bottom: 0.08 }, autoScale: true },
-      timeScale: { borderColor: c.grid, timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: 8, minBarSpacing: 1 },
+      timeScale: { borderColor: c.grid, timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: 8, minBarSpacing: 1, tickMarkFormatter: istTick },
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: { color: c.text, width: 1, style: LineStyle.Dashed, labelBackgroundColor: c.pri },
         horzLine: { color: c.text, width: 1, style: LineStyle.Dashed, labelBackgroundColor: c.pri },
       },
-      // Smooth, Zerodha-like interaction: drag to pan, wheel/pinch to zoom, drag either axis to scale.
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
       handleScale: { axisPressedMouseMove: { time: true, price: true }, mouseWheel: true, pinch: true },
       kineticScroll: { touch: true, mouse: false },
@@ -77,7 +99,7 @@ export default function Chart({ bars, height = 420, label = '', tag = '' }) {
 
     const candle = chart.addCandlestickSeries({
       upColor: c.up, downColor: c.down, borderUpColor: c.up, borderDownColor: c.down, wickUpColor: c.up, wickDownColor: c.down,
-      priceLineVisible: true, priceLineStyle: LineStyle.Dashed, priceLineColor: c.text, lastValueVisible: true,
+      priceLineVisible: true, priceLineStyle: LineStyle.Dashed, priceLineWidth: 1, lastValueVisible: true,
     });
     const longStop = chart.addLineSeries({ color: c.pri, lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
     const shortStop = chart.addLineSeries({ color: c.warn, lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
@@ -88,35 +110,43 @@ export default function Chart({ bars, height = 420, label = '', tag = '' }) {
     shortStop.setData(data.shortStop);
     candle.setMarkers(markers(bars, c));
     chart.timeScale().fitContent();
+    renderLegend(bars[bars.length - 1], c);
 
-    const renderLegend = (b) => {
-      const lg = legendRef.current;
-      if (!lg || !b) return;
-      const prev = bars[bars.indexOf(b) - 1];
-      const base = prev ? prev.close : b.open;
-      const chg = b.close - base;
-      const chgp = base ? (chg / base) * 100 : 0;
-      const col = b.close >= b.open ? c.up : c.down;
-      lg.innerHTML =
-        `<b>${label}</b>` +
-        `<span>O <b style="color:${col}">${b.open.toFixed(2)}</b></span>` +
-        `<span>H <b style="color:${col}">${b.high.toFixed(2)}</b></span>` +
-        `<span>L <b style="color:${col}">${b.low.toFixed(2)}</b></span>` +
-        `<span>C <b style="color:${col}">${b.close.toFixed(2)}</b></span>` +
-        `<span style="color:${chg >= 0 ? c.up : c.down}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)} (${chgp.toFixed(2)}%)</span>`;
-    };
-    renderLegend(bars[bars.length - 1]);
-
-    const byTime = new Map(bars.map((b) => [Number(b.ts_epoch), b]));
     chart.subscribeCrosshairMove((p) => {
-      const b = p?.time != null ? byTime.get(Number(p.time)) : null;
-      renderLegend(b || bars[bars.length - 1]);
+      const b = p?.time != null ? series.current?.byTime.get(Number(p.time)) : null;
+      renderLegend(b || series.current?.bars[series.current.bars.length - 1], c);
     });
+
+    chartRef.current = chart;
+    series.current = { candle, longStop, shortStop, c, bars, byTime: new Map(bars.map((b) => [Number(b.ts_epoch), b])) };
 
     const ro = new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth }));
     ro.observe(el);
-    return () => { ro.disconnect(); chart.remove(); };
-  }, [bars, height, label, theme]);
+    return () => { ro.disconnect(); chart.remove(); chartRef.current = null; series.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [label, height, theme]);
+
+  // Live/incremental data updates — keep the current view, just refresh the data.
+  useEffect(() => {
+    const s = series.current;
+    if (!s || !bars.length) return;
+    const data = seriesData(bars);
+    s.candle.setData(data.candles);
+    s.longStop.setData(data.longStop);
+    s.shortStop.setData(data.shortStop);
+    s.candle.setMarkers(markers(bars, s.c));
+    s.bars = bars;
+    s.byTime = new Map(bars.map((b) => [Number(b.ts_epoch), b]));
+    renderLegend(bars[bars.length - 1], s.c);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bars]);
+
+  const zoom = (factor) => {
+    const ts = chartRef.current?.timeScale();
+    if (!ts) return;
+    const bs = ts.options().barSpacing || 8;
+    ts.applyOptions({ barSpacing: Math.max(1, Math.min(60, bs * factor)) });
+  };
 
   if (!bars.length) return <div className="empty">No data for this symbol.</div>;
   return (
@@ -124,6 +154,10 @@ export default function Chart({ bars, height = 420, label = '', tag = '' }) {
       <div className="chartLegend" ref={legendRef} />
       {tag && <span className="demo-tag">{tag}</span>}
       <div className="chartCanvas" ref={elRef} />
+      <div className="chartZoom">
+        <button type="button" onClick={() => zoom(1 / 1.3)} aria-label="Zoom out">−</button>
+        <button type="button" onClick={() => zoom(1.3)} aria-label="Zoom in">+</button>
+      </div>
     </div>
   );
 }

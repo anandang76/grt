@@ -1,8 +1,36 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { homeFor, isAdmin, useAuth } from '../lib/auth';
 import { initials } from '../lib/format';
-import { Alert, RoleBadge } from './ui';
+import { RoleBadge } from './ui';
+
+// Auto-dismissing toast for one-off flash messages set via navigation state.
+function FlashToast() {
+  const loc = useLocation();
+  const navigate = useNavigate();
+  const [toast, setToast] = useState(null);
+  const timer = useRef();
+
+  useEffect(() => {
+    const f = loc.state?.flash;
+    if (!f) return;
+    setToast({ ...f, id: Date.now() });
+    navigate(loc.pathname + loc.search, { replace: true, state: {} }); // don't re-show on refresh/back
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setToast(null), 12000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loc.state]);
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  if (!toast) return null;
+  return (
+    <div className={`toast toast-${toast.type}`} role="status">
+      <span>{toast.msg}</span>
+      <button type="button" onClick={() => setToast(null)} aria-label="Dismiss">✕</button>
+    </div>
+  );
+}
 
 function AccountMenu({ user }) {
   const { logout } = useAuth();
@@ -39,11 +67,10 @@ function AccountMenu({ user }) {
 
 export default function Layout({ narrow = false, full = false }) {
   const { user } = useAuth();
-  const { state } = useLocation();
-  const flash = state?.flash;
 
   return (
     <>
+      <FlashToast />
       <header className="top">
         <div className="wrap top-in">
           <Link className="brand" to={user ? homeFor(user) : '/'}>
@@ -67,7 +94,6 @@ export default function Layout({ narrow = false, full = false }) {
         </div>
       </header>
       <main className={`wrap${narrow ? ' narrow' : ''}${full ? ' wrap-full' : ''}`}>
-        {flash && <Alert type={flash.type}>{flash.msg}</Alert>}
         <Outlet />
       </main>
       <footer>
