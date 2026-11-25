@@ -95,6 +95,29 @@ class HistoryController extends Controller
         return response()->json(['symbol' => $symbol, 'results' => $results]);
     }
 
+    /** Erase every instrument's candles table at once. Super Admin only; type-to-confirm. */
+    public function eraseAll(Request $r): JsonResponse
+    {
+        if (! $r->user()->isSuper()) {
+            return response()->json(['message' => 'Only a Super Admin can erase all data.'], 403);
+        }
+        $r->validate(['confirm' => 'required|string']);
+        if (trim($r->input('confirm')) !== 'I UNDERSTAND') {
+            return response()->json(['message' => 'Type I UNDERSTAND to confirm.'], 422);
+        }
+
+        $count = 0;
+        foreach (Nifty50::all() as $i) {
+            if (CandleTable::exists($i['symbol'])) {
+                CandleTable::truncate($i['symbol']);
+                $count++;
+            }
+        }
+        AuditLog::record('history_erase_all', null, ['tables' => $count]);
+
+        return response()->json(['message' => "Erased all candle data across $count tables."]);
+    }
+
     /** Erase a symbol's entire candles table (keeps the empty table). */
     public function erase(string $symbol): JsonResponse
     {

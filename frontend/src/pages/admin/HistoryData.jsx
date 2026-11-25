@@ -1,10 +1,52 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Loading } from '../../components/ui';
+import { Alert, Button, Loading } from '../../components/ui';
+import { isSuper, useAuth } from '../../lib/auth';
 import { fmtDate } from '../../lib/format';
-import { eraseHistory, getHistoryDays, getHistorySymbols, HISTORY_MAX_DAYS, updateHistory } from '../../lib/history';
+import { eraseAllHistory, eraseHistory, getHistoryDays, getHistorySymbols, HISTORY_MAX_DAYS, updateHistory } from '../../lib/history';
 
-function SymbolMenu({ symbols, active, onPick }) {
+const CONFIRM_PHRASE = 'I UNDERSTAND';
+
+function EraseAllDialog({ onClose, onDone }) {
+  const [text, setText] = useState('');
+  const s = useSubmitState();
+
+  const run = () => s.run(async () => {
+    const r = await eraseAllHistory(text.trim());
+    onDone(r.message);
+  });
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h2>Erase ALL candle data</h2>
+        <p className="muted">This permanently clears stored intraday candles for <b>every instrument</b> — all tables at once. Watchlists, users and settings are not affected. This cannot be undone, but you can re-pull data afterward.</p>
+        <p className="small">Type <b>{CONFIRM_PHRASE}</b> to confirm.</p>
+        <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder={CONFIRM_PHRASE} aria-label="Confirmation phrase" autoFocus />
+        <Alert>{s.error}</Alert>
+        <div className="modal-f">
+          <button type="button" className="btn btn-line" onClick={onClose} disabled={s.busy}>Cancel</button>
+          <Button className="btn-err" busy={s.busy} disabled={text.trim() !== CONFIRM_PHRASE} onClick={run}>Erase all data</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Minimal local submit state (avoids pulling the form hook here).
+function useSubmitState() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const run = async (fn) => {
+    setBusy(true); setError(null);
+    try { await fn(); } catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
+  return { busy, error, run };
+}
+
+function SymbolMenu({ symbols, active, onPick, onErasedAll }) {
+  const { user } = useAuth();
   const [q, setQ] = useState('');
+  const [dialog, setDialog] = useState(false);
   const list = useMemo(() => {
     const n = q.trim().toLowerCase();
     return n ? symbols.filter((s) => s.symbol.toLowerCase().includes(n) || s.name.toLowerCase().includes(n)) : symbols;
@@ -22,6 +64,13 @@ function SymbolMenu({ symbols, active, onPick }) {
           </button>
         ))}
       </div>
+      {isSuper(user) && (
+        <div className="hist-erase-all">
+          <button type="button" className="btn btn-err btn-block" onClick={() => setDialog(true)}>Erase ALL Data</button>
+          <p className="hint">Super Admin only · clears every table</p>
+        </div>
+      )}
+      {dialog && <EraseAllDialog onClose={() => setDialog(false)} onDone={(msg) => { setDialog(false); onErasedAll(msg); }} />}
     </aside>
   );
 }
@@ -121,6 +170,7 @@ export default function HistoryData() {
   const [symbols, setSymbols] = useState(null);
   const [active, setActive] = useState(null);
   const [err, setErr] = useState(null);
+  const [notice, setNotice] = useState(null);
 
   const load = () => getHistorySymbols().then((r) => setSymbols(r.symbols)).catch((e) => setErr(e.message));
   useEffect(() => { load(); }, []);
@@ -128,11 +178,14 @@ export default function HistoryData() {
   if (err) return <Alert>{err}</Alert>;
   if (!symbols) return <Loading />;
 
+  const erasedAll = (msg) => { setNotice(msg); setActive(null); load(); };
+
   return (
     <>
       <div className="page-h"><h1>History data</h1><span className="muted small">Pull and store intraday candles per script</span></div>
+      {notice && <Alert type="ok">{notice}</Alert>}
       <div className="hist-wrap">
-        <SymbolMenu symbols={symbols} active={active} onPick={setActive} />
+        <SymbolMenu symbols={symbols} active={active} onPick={setActive} onErasedAll={erasedAll} />
         {active
           ? <DaysPanel symbol={active} onUpdated={load} />
           : <div className="hist-main"><div className="empty">Pick a script on the left to see its last 30 days.</div></div>}

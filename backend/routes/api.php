@@ -66,6 +66,7 @@ Route::middleware(['auth:sanctum', 'active:admin,superadmin'])->prefix('admin')-
     Route::get('/history/symbols', [HistoryController::class, 'symbols']);
     Route::get('/history/days/{symbol}', [HistoryController::class, 'days']);
     Route::post('/history/update', [HistoryController::class, 'update']);
+    Route::post('/history/erase-all', [HistoryController::class, 'eraseAll']);
     Route::delete('/history/{symbol}', [HistoryController::class, 'erase']);
 
     Route::middleware('active:superadmin')->group(function () {
