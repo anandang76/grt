@@ -17,6 +17,13 @@ return [
     'default' => env('MAIL_MAILER', 'log'),
 
     /*
+    | Global email on/off switch. EMAIL_SEND=No (or false/0) routes every email to the
+    | log instead of delivering it — OTP codes etc. still land in storage/logs/laravel.log.
+    | Set EMAIL_SEND=Yes to actually send through the configured mailer.
+    */
+    'send_enabled' => filter_var(env('EMAIL_SEND', true), FILTER_VALIDATE_BOOLEAN),
+
+    /*
     |--------------------------------------------------------------------------
     | Mailer Configurations
     |--------------------------------------------------------------------------

@@ -47,9 +47,10 @@ cd frontend && npm run dev                # :5173  -> open this
 
 Vite proxies `/api` and `/sanctum` to Laravel, so the browser sees one origin (cookie auth just works).
 
-**Testing without sending real email:** `backend/.env.testing` uses `MAIL_MAILER=log`.
-Run `APP_ENV=testing php artisan serve` and OTP codes appear in `backend/storage/logs/laravel.log`.
-(`MAIL_MAILER=log php artisan serve` does **not** work: `artisan serve` does not pass that variable through.)
+**Email on/off switch:** set `EMAIL_SEND=No` in `backend/.env` to stop all outgoing email —
+every message is written to `backend/storage/logs/laravel.log` instead of being delivered
+(OTP codes still appear there, so logins keep working). Set `EMAIL_SEND=Yes` to send for real.
+`backend/.env.testing` ships with `EMAIL_SEND=No`.
 
 ## Production build
 

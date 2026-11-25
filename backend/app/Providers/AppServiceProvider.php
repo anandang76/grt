@@ -22,6 +22,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Global email kill-switch: EMAIL_SEND=No routes all mail to the log instead of delivering it.
+        if (! config('mail.send_enabled')) {
+            config(['mail.default' => 'log']);
+        }
+
         // Named limiters each keep their own counter (unnamed throttle:x,y share one per-IP key).
         RateLimiter::for('auth', fn (Request $r) => Limit::perMinute(60)->by('auth|'.$r->ip()));
         RateLimiter::for('otp', fn (Request $r) => [
