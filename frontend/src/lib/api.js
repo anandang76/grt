@@ -58,3 +58,4 @@ export async function api(path, { method = 'GET', body, retry = true } = {}) {
 }
 
 export const post = (path, body = {}) => api(path, { method: 'POST', body });
+export const put = (path, body = {}) => api(path, { method: 'PUT', body });

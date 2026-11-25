@@ -28,6 +28,8 @@ function AccountMenu({ user }) {
           <div className="muted small">{user.email}</div>
           <RoleBadge role={user.role} />
         </div>
+        <Link to="/watchlist">Configure watchlist</Link>
+        <Link to="/broker">Dhan API token</Link>
         <Link to="/profile">Profile &amp; password</Link>
         <button type="button" onClick={doLogout}>Log out</button>
       </div>

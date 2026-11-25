@@ -1,84 +1,102 @@
-import { Link } from 'react-router-dom';
-import { Icon, RoleBadge } from '../components/ui';
-import { useTicker } from '../hooks/useTicker';
-import { isAdmin, useAuth } from '../lib/auth';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import Chart from '../components/Chart';
+import { Loading } from '../components/ui';
+import { getCandles, quote } from '../lib/candles';
 import { fmtPrice } from '../lib/format';
+import { getDhanStatus, getWatchlist } from '../lib/watchlist';
 
-const WATCH = ['NIFTY 50', 'NIFTY BANK', 'SENSEX', 'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK'];
-
-const TILES = [
-  ['Orders', 'Place and track orders', <><path d="M4 4h16v16H4z" /><path d="M8 9h8M8 13h8M8 17h5" /></>],
-  ['Positions', 'Open positions and P&L', <><path d="M3 3v18h18" /><path d="m7 15 4-4 3 3 5-6" /></>],
-  ['Holdings', 'Long-term portfolio', <><path d="M21 16V8l-9-5-9 5v8l9 5z" /><path d="m3.3 7 8.7 5 8.7-5M12 22V12" /></>],
-  ['Funds', 'Margins and balances', <><rect x="2" y="6" width="20" height="13" rx="2" /><path d="M2 10h20" /></>],
-];
-
-function MarketWatch() {
-  const { ticks, status, demo } = useTicker(WATCH);
+function TokenBanner() {
+  const [dhan, setDhan] = useState(null);
+  useEffect(() => { getDhanStatus().then((r) => setDhan(r.dhan)).catch(() => {}); }, []);
+  if (!dhan || (dhan.configured && !dhan.stale)) return null;
   return (
-    <div className="card tcard">
-      <div className="tcard-h">
-        <h2>Market watch</h2>
-        <span className="small">
-          {demo && <span className="badge b-pending" title="Simulated prices, not real market data">DEMO DATA</span>}{' '}
-          <span className={`dot dot-${status}`} /> {status === 'live' ? 'Live' : status === 'connecting' ? 'Connecting…' : 'Offline'}
-        </span>
+    <div className="alert alert-info tokbar">
+      <span>{dhan.configured ? "Today's Dhan token hasn't been set — live data may be unavailable." : 'No Dhan token configured yet.'}</span>
+      <Link className="btn btn-sm" to="/broker">Update token</Link>
+    </div>
+  );
+}
+
+function SymbolRow({ item, active, onClick }) {
+  const q = quote(item.symbol);
+  const cls = !q ? '' : q.ch >= 0 ? 'pos' : 'neg';
+  return (
+    <button className={`wl-row${active ? ' on' : ''}`} onClick={onClick}>
+      <span className="wl-row-s">{item.symbol}</span>
+      <span className={`wl-row-p ${cls}`}>{fmtPrice(q?.ltp)}</span>
+      <span className={`wl-row-c ${cls}`}>{q ? `${q.ch >= 0 ? '+' : ''}${q.chp.toFixed(2)}%` : ''}</span>
+    </button>
+  );
+}
+
+function SymbolCharts({ symbol }) {
+  const { oneMin, fiveMin } = useMemo(() => getCandles(symbol), [symbol]);
+  const q = quote(symbol);
+  const cls = !q ? '' : q.ch >= 0 ? 'pos' : 'neg';
+  return (
+    <div className="stack">
+      <div className="sym-head">
+        <div>
+          <h1>{symbol}</h1>
+          <span className="badge b-pending" title="Simulated prices, not real market data">DEMO DATA</span>
+        </div>
+        {q && (
+          <div className={`sym-price ${cls}`}>
+            <b>{fmtPrice(q.ltp)}</b>
+            <span>{q.ch >= 0 ? '+' : ''}{q.ch.toFixed(2)} ({q.chp.toFixed(2)}%)</span>
+          </div>
+        )}
       </div>
-      <ul className="mw">
-        {WATCH.map((s) => {
-          const t = ticks[s];
-          const cls = !t ? '' : t.ch >= 0 ? 'pos' : 'neg';
-          return (
-            <li key={s}>
-              <span className="mw-s">{s}</span>
-              <span className={`mw-p ${cls}`}>{fmtPrice(t?.ltp)}</span>
-              <span className={`mw-c ${cls}`}>{t ? `${t.ch >= 0 ? '+' : ''}${t.chp.toFixed(2)}%` : '—'}</span>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="card chart-card">
+        <div className="chart-h"><h2>5 Min</h2><span className="muted small">UT Bot · ATR 10</span></div>
+        <Chart bars={fiveMin} height={300} />
+      </div>
+      <div className="card chart-card">
+        <div className="chart-h"><h2>1 Min</h2><span className="muted small">UT Bot · ATR 10</span></div>
+        <Chart bars={oneMin} height={300} />
+      </div>
     </div>
   );
 }
 
 export default function Home() {
-  const { user } = useAuth();
-  const first = user.name.trim().split(/\s+/)[0];
+  const [params, setParams] = useSearchParams();
+  const [wl, setWl] = useState(null);
+
+  useEffect(() => { getWatchlist().then((r) => setWl(r.watchlist)).catch(() => setWl([])); }, []);
+
+  const selected = params.get('s');
+  const active = wl?.some((w) => w.symbol === selected) ? selected : wl?.[0]?.symbol;
+  const select = (sym) => setParams((p) => { p.set('s', sym); return p; }, { replace: true });
+
+  if (wl === null) return <Loading />;
 
   return (
     <>
-      <div className="page-h">
-        <div>
-          <h1>Hi, {first} 👋</h1>
-          <p className="muted" style={{ margin: 0 }}>Welcome to your GR Trading terminal.</p>
+      <TokenBanner />
+      {wl.length === 0 ? (
+        <div className="card center auth">
+          <h1>Your watchlist is empty</h1>
+          <p className="sub">Pick up to 10 NIFTY 50 stocks to see their 1-min and 5-min charts with buy/sell signals.</p>
+          <Link className="btn" to="/watchlist">Choose stocks</Link>
         </div>
-        {isAdmin(user) && <Link className="btn btn-line btn-sm" to="/admin">Admin panel →</Link>}
-      </div>
-
-      <div className="two">
-        <MarketWatch />
-        <div className="stack">
-          <div className="tiles tiles-2">
-            {TILES.map(([t, d, icon]) => (
-              <div className="card tile" key={t}>
-                <div className="ico"><Icon d={icon} /></div>
-                <h3>{t} <span className="soon">SOON</span></h3>
-                <p>{d}</p>
-              </div>
-            ))}
-          </div>
-          <div className="card">
-            <h2>Your account</h2>
-            <dl className="kv">
-              <dt>Name</dt><dd>{user.name}</dd>
-              <dt>Email</dt><dd>{user.email}</dd>
-              <dt>Mobile</dt><dd>{user.phone || '—'}</dd>
-              <dt>Role</dt><dd><RoleBadge role={user.role} /></dd>
-            </dl>
-            <p style={{ margin: '14px 0 0' }}><Link to="/profile">Change password →</Link></p>
-          </div>
+      ) : (
+        <div className="terminal">
+          <aside className="wl-side">
+            <div className="wl-side-h">
+              <span>Watchlist</span>
+              <Link to="/watchlist" title="Edit watchlist" className="wl-edit">Edit</Link>
+            </div>
+            <div className="wl-rows">
+              {wl.map((item) => (
+                <SymbolRow key={item.symbol} item={item} active={item.symbol === active} onClick={() => select(item.symbol)} />
+              ))}
+            </div>
+          </aside>
+          <section className="wl-main">{active && <SymbolCharts symbol={active} />}</section>
         </div>
-      </div>
+      )}
     </>
   );
 }

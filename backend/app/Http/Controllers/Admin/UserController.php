@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\WatchlistController;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\Notifier;
@@ -58,10 +59,24 @@ class UserController extends Controller
         return [
             'user' => $user->load('approver')->toAdmin(),
             'can_manage' => $r->user()->canManage($user),
+            'watchlist' => WatchlistController::forUser($user->id),
             'activity' => AuditLog::with('actor', 'target')
                 ->where(fn ($w) => $w->where('target_id', $user->id)->orWhere('actor_id', $user->id))
                 ->latest('id')->limit(15)->get()->map->toApi(),
         ];
+    }
+
+    /** Admin sets a user's watchlist. */
+    public function setWatchlist(Request $r, User $user): array
+    {
+        $data = $r->validate([
+            'symbols' => 'present|array|max:60',
+            'symbols.*' => 'string|max:30',
+        ]);
+        $watchlist = WatchlistController::setForUser($user->id, $data['symbols']);
+        AuditLog::record('watchlist_set_admin', $user->id, ['count' => count($watchlist)]);
+
+        return ['watchlist' => $watchlist, 'message' => "Watchlist updated for {$user->name}."];
     }
 
     public function action(Request $r, User $user, Notifier $notify): JsonResponse

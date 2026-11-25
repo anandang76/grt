@@ -1,16 +1,54 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import WatchlistEditor from '../../components/WatchlistEditor';
 import { Alert, Badge, Loading, RoleBadge } from '../../components/ui';
 import { post } from '../../lib/api';
 import { isSuper, useAuth } from '../../lib/auth';
 import { actionLabel, fmtDate, metaText, ROLE_LABELS } from '../../lib/format';
 import { useFetch } from '../../lib/hooks';
+import { adminSaveWatchlist } from '../../lib/watchlist';
 
 const CONFIRM = {
   reject: 'Reject this signup?',
   deactivate: 'Deactivate this user? They will be logged out immediately.',
   reset_password: 'Generate a temporary password and email it to this user?',
 };
+
+function WatchlistCard({ userId, userName, watchlist, canManage, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const save = async (symbols) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await adminSaveWatchlist(userId, symbols);
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="tcard-h" style={{ padding: 0, border: 0, marginBottom: 12 }}>
+        <h2 style={{ margin: 0 }}>Watchlist <span className="muted small">({watchlist.length})</span></h2>
+        {canManage && !editing && <button className="btn btn-sm btn-line" onClick={() => setEditing(true)}>Edit</button>}
+      </div>
+      {editing ? (
+        <WatchlistEditor initial={watchlist} onSave={save} onCancel={() => setEditing(false)} saving={saving} error={error} />
+      ) : watchlist.length ? (
+        <div className="chips">{watchlist.map((w) => <span key={w.symbol} className="chip">{w.symbol}</span>)}</div>
+      ) : (
+        <p className="muted small" style={{ margin: 0 }}>No symbols yet.{canManage ? ` Add some for ${userName}.` : ''}</p>
+      )}
+    </div>
+  );
+}
 
 export default function UserDetail() {
   const { id } = useParams();
@@ -23,7 +61,7 @@ export default function UserDetail() {
   if (loading && !data) return <Loading />;
   if (!data) return <Alert>{error || 'User not found.'}</Alert>;
 
-  const { user: t, can_manage: canManage, activity } = data;
+  const { user: t, can_manage: canManage, activity, watchlist } = data;
 
   const act = async (action, extra = {}) => {
     if (CONFIRM[action] && !confirm(CONFIRM[action])) return;
@@ -119,6 +157,8 @@ export default function UserDetail() {
           )}
         </div>
       </div>
+
+      <WatchlistCard userId={t.id} userName={t.name} watchlist={watchlist} canManage={canManage} onSaved={reload} />
 
       <div className="card" style={{ marginTop: 16 }}>
         <h2>Recent activity</h2>

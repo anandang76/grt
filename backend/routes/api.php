@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BrokerController;
+use App\Http\Controllers\WatchlistController;
 use App\Services\TickerToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +39,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         'token' => TickerToken::issue($r->user()),
         'url' => config('services.ticker.url'),
     ]);
+
+    // Watchlist (user manages their own) + NIFTY 50 reference list.
+    Route::get('/watchlist', [WatchlistController::class, 'index']);
+    Route::put('/watchlist', [WatchlistController::class, 'update']);
+    Route::get('/nifty50', [WatchlistController::class, 'nifty50']);
+
+    // Shared Dhan API token — any logged-in user may view and update (expires daily).
+    Route::get('/broker/dhan', [BrokerController::class, 'show']);
+    Route::put('/broker/dhan', [BrokerController::class, 'update']);
 });
 
 Route::middleware(['auth:sanctum', 'active:admin,superadmin'])->prefix('admin')->group(function () {
@@ -44,6 +55,7 @@ Route::middleware(['auth:sanctum', 'active:admin,superadmin'])->prefix('admin')-
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{user}', [UserController::class, 'show']);
     Route::post('/users/{user}/action', [UserController::class, 'action']);
+    Route::put('/users/{user}/watchlist', [UserController::class, 'setWatchlist']);
 
     Route::middleware('active:superadmin')->group(function () {
         Route::get('/roles', [SystemController::class, 'roles']);
