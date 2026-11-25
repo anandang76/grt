@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class HistoryController extends Controller
 {
-    private const MAX_DAYS = 10;   // per update request
+    private const MAX_DAYS = 22;   // per update request (~1 trading month)
     private const WINDOW = 30;     // trading days shown
 
     /** Left-menu list: every instrument with how many days of stored data its table holds. */

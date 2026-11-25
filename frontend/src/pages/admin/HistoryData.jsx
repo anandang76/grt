@@ -138,7 +138,10 @@ function DaysPanel({ symbol, onUpdated }) {
       </div>
 
       <div className="hist-actions">
-        <button className="btn btn-sm btn-line" onClick={() => pickLast(5)}>Last 5 days</button>
+        <button className="btn btn-sm btn-line" onClick={() => pickLast(5)}>Last 5</button>
+        <button className="btn btn-sm btn-line" onClick={() => pickLast(10)}>Last 10</button>
+        <button className="btn btn-sm btn-line" onClick={() => pickLast(15)}>Last 15</button>
+        <button className="btn btn-sm btn-line" onClick={() => pickLast(22)}>Last 1 month</button>
         <button className="btn btn-sm btn-line" onClick={() => setSel(new Set())} disabled={!sel.size}>Clear</button>
         <button className="btn btn-sm btn-err" onClick={erase} disabled={busy}>Erase table</button>
         <span className="grow" />
