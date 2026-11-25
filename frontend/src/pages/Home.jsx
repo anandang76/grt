@@ -122,6 +122,27 @@ function SidebarNav() {
   );
 }
 
+// Collapsible sidebar section. Shrinking the watchlist reveals the panels below it.
+function Panel({ title, extra, storageKey, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(() => {
+    if (!storageKey) return defaultOpen;
+    try { const v = localStorage.getItem(storageKey); return v === null ? defaultOpen : v === '1'; } catch { return defaultOpen; }
+  });
+  const toggle = () => setOpen((o) => { const n = !o; try { if (storageKey) localStorage.setItem(storageKey, n ? '1' : '0'); } catch { /* ignore */ } return n; });
+  return (
+    <div className={`side-panel${open ? ' open' : ''}`}>
+      <div className="side-panel-h" onClick={toggle} role="button" tabIndex={0}>
+        <span className="side-panel-chev">{open ? '▾' : '▸'}</span>
+        <span className="side-panel-title">{title}</span>
+        {extra && <span className="side-panel-extra" onClick={(e) => e.stopPropagation()}>{extra}</span>}
+      </div>
+      {open && <div className="side-panel-body">{children}</div>}
+    </div>
+  );
+}
+
+const PanelPlaceholder = ({ hint }) => <div className="panel-ph">{hint}<span className="soon">SOON</span></div>;
+
 export default function Home() {
   const [params, setParams] = useSearchParams();
   const [wl, setWl] = useState(null);
@@ -160,17 +181,28 @@ export default function Home() {
       ) : (
         <div className={`terminal${collapsed ? ' collapsed' : ''}`}>
           <aside className="wl-side">
-            <Link className="wl-brand" to="/home"><span className="logo">GR</span><span>Trading</span></Link>
-            <div className="wl-side-h">
-              <button className="wl-collapse" onClick={toggle} title="Hide watchlist" aria-label="Hide watchlist">‹</button>
-              <span>Watchlist</span>
-              <span className={`live-dot live-${status}`} title={status === 'live' ? 'Market open' : 'Market closed'} />
-              <Link to="/watchlist" className="wl-edit">Edit</Link>
+            <div className="wl-top">
+              <Link className="wl-brand" to="/home"><span className="logo">GR</span><span>Trading</span></Link>
+              <button className="wl-collapse" onClick={toggle} title="Hide panel" aria-label="Hide panel">‹</button>
             </div>
-            <div className="wl-rows">
-              {wl.map((item) => (
-                <SymbolRow key={item.symbol} item={item} liveLtp={ticks[item.symbol]?.ltp} active={item.symbol === active} onClick={() => select(item.symbol)} />
-              ))}
+            <div className="wl-panels">
+              <Panel
+                title="Watchlist"
+                storageKey="grt_p_watchlist"
+                extra={<>
+                  <span className={`live-dot live-${status}`} title={status === 'live' ? 'Market open' : 'Market closed'} />
+                  <Link to="/watchlist" className="wl-edit">Edit</Link>
+                </>}
+              >
+                <div className="wl-rows">
+                  {wl.map((item) => (
+                    <SymbolRow key={item.symbol} item={item} liveLtp={ticks[item.symbol]?.ltp} active={item.symbol === active} onClick={() => select(item.symbol)} />
+                  ))}
+                </div>
+              </Panel>
+              <Panel title="Positions" storageKey="grt_p_positions" defaultOpen={false}><PanelPlaceholder hint="Open positions & P&L" /></Panel>
+              <Panel title="Orders" storageKey="grt_p_orders" defaultOpen={false}><PanelPlaceholder hint="Order book" /></Panel>
+              <Panel title="Holdings" storageKey="grt_p_holdings" defaultOpen={false}><PanelPlaceholder hint="Portfolio holdings" /></Panel>
             </div>
             <SidebarNav />
           </aside>

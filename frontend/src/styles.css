@@ -349,3 +349,17 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .sig-neutral{border-color:var(--line);color:var(--muted)}
 .sig-sub .pos{color:var(--ok)}.sig-sub .neg{color:var(--err)}
 @media(max-width:620px){.signal-badge{left:6px;top:8px;min-width:0;padding:7px 9px}.signal-badge svg{width:20px;height:20px}.sig-txt{font-size:10px}}
+
+/* ---------- Collapsible sidebar panels ---------- */
+.wl-top{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--line)}
+.wl-top .wl-brand{padding:0;border:0}
+.wl-panels{overflow-y:auto;min-height:0}
+@media(min-width:800px){.wl-panels{flex:1}}
+.side-panel{border-bottom:1px solid var(--line)}
+.side-panel-h{display:flex;align-items:center;gap:7px;padding:9px 12px;cursor:pointer;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);user-select:none}
+.side-panel-h:hover{background:var(--bg)}
+.side-panel-chev{font-size:10px;width:10px}
+.side-panel-title{flex:1}
+.side-panel-extra{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0}
+.side-panel-body .wl-rows{flex:none;overflow:visible}
+.panel-ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;color:var(--muted);font-size:13px}
