@@ -35,7 +35,6 @@ export default function App() {
           <Route index element={<Landing />} />
           <Route path="terms" element={<Terms />} />
           <Route element={<RequireAuth />}>
-            <Route path="watchlist" element={<Watchlist />} />
             <Route path="broker" element={<Broker />} />
           </Route>
           <Route element={<RequireAuth roles={['admin', 'superadmin']} />}>
@@ -56,6 +55,7 @@ export default function App() {
         <Route element={<Layout full />}>
           <Route element={<RequireAuth />}>
             <Route path="home" element={<Home />} />
+            <Route path="watchlist" element={<Watchlist />} />
           </Route>
         </Route>
 

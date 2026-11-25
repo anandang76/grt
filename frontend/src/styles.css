@@ -273,14 +273,15 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .wl-editor-h input{max-width:340px}
 .wl-group{padding:0;margin-bottom:14px}
 .wl-table-scroll{overflow-x:auto}
-.wl-table{min-width:880px}
+.wl-table{min-width:760px}
 .wl-table th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
 .wl-table th.sortable:hover{color:var(--text)}
 .wl-table th.on{color:var(--pri)}
 .wl-table th.num,.wl-table td.num{text-align:right;font-variant-numeric:tabular-nums}
 .wl-table tbody tr.sel{background:var(--pri-soft)}
 .wl-table input[type=checkbox]{width:16px;height:16px;accent-color:var(--pri)}
-.wl-name-cell{color:var(--muted)}
+.wl-sym-cell b{display:inline}
+.wl-name-cell{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
 /* keep these as real scrolling tables on mobile (override the stacked .rt layout) */
 @media(max-width:699px){
   .wl-table{display:table}
