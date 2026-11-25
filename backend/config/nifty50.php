@@ -67,7 +67,8 @@ return [
     $s('SHRIRAMFIN', 'Shriram Finance', 600),
     $s('SUNPHARMA', 'Sun Pharmaceutical', 1700),
     $s('TATACONSUM', 'Tata Consumer Products', 1100),
-    $s('TATAMOTORS', 'Tata Motors', 780),
+    $s('TMPV', 'Tata Motors Passenger Vehicles', 400),
+    $s('TMCV', 'Tata Motors (Commercial Vehicles)', 350),
     $s('TATASTEEL', 'Tata Steel', 150, '3499'),
     $s('TCS', 'Tata Consultancy Services', 2340, '11536'),
     $s('TECHM', 'Tech Mahindra', 1600),
@@ -103,7 +104,6 @@ return [
     $nxt('HAL', 'Hindustan Aeronautics', 4200),
     $nxt('HDFCAMC', 'HDFC Asset Management', 4200),
     $nxt('ICICIGI', 'ICICI Lombard General Ins.', 1900),
-    $nxt('ICICIPRULI', 'ICICI Prudential Life', 650),
     $nxt('INDHOTEL', 'Indian Hotels', 780),
     $nxt('INDIGO', 'InterGlobe Aviation', 4500),
     $nxt('IOC', 'Indian Oil', 140),
@@ -112,7 +112,6 @@ return [
     $nxt('JSWENERGY', 'JSW Energy', 580),
     $nxt('LICI', 'Life Insurance Corp', 900),
     $nxt('LODHA', 'Macrotech Developers', 1300),
-    $nxt('LTIM', 'LTIMindtree', 6200),
     $nxt('MARICO', 'Marico', 650),
     $nxt('MOTHERSON', 'Samvardhana Motherson', 160),
     $nxt('NAUKRI', 'Info Edge India', 1400),
@@ -141,6 +140,5 @@ return [
     // ---- Indices ----
     $idx('NIFTY 50', 'NIFTY 50 Index', 25700, 'NSE'),
     $idx('BANKNIFTY', 'Nifty Bank Index', 58000, 'NSE'),
-    $idx('GIFTNIFTY', 'GIFT Nifty', 25750, 'NSE'),
     $idx('SENSEX', 'BSE SENSEX', 82000, 'BSE'),
 ];
