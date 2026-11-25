@@ -192,7 +192,9 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .chartLegend>b:first-child{font-size:12px;margin-right:4px}
 
 /* ---------- Watchlist editor ---------- */
-.wl-editor-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.wl-editor-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.wl-editor-h input{flex:1 1 220px}
+.wl-editor-h .muted{margin-left:auto}
 .wl-editor-h input{max-width:280px}
 .wl-grid{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));max-height:420px;overflow-y:auto;padding:2px}
 .wl-pick{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13px}

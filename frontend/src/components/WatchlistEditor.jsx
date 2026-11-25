@@ -115,6 +115,7 @@ export default function WatchlistEditor({ initial = [], onSave, onCancel, saving
       <div className="wl-editor-h">
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search symbol or name…" aria-label="Search instruments" />
         <span className="muted small">{picked.size} / {max} selected</span>
+        <Button className="btn-sm" busy={saving} onClick={() => onSave([...picked])}>Save watchlist</Button>
       </div>
       <Alert>{error}</Alert>
 
