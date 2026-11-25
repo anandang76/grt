@@ -303,3 +303,27 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .modal input[type=text]{width:100%;margin-top:4px}
 .modal-f{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 .chart-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px;color:var(--muted);font-size:14px}
+
+/* ---------- Terminal: bare layout, sidebar nav, side-by-side charts ---------- */
+.bare-main{padding-top:10px;padding-bottom:10px;min-height:100vh}
+.wl-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px;color:var(--text);padding:10px 14px;border-bottom:1px solid var(--line)}
+.wl-brand:hover{text-decoration:none}
+@media(min-width:800px){
+  .wl-side{position:sticky;top:10px;height:calc(100vh - 20px);display:flex;flex-direction:column;overflow:hidden}
+  .wl-rows{flex:1;overflow-y:auto}
+  .wl-nav{margin-top:auto}
+}
+.wl-nav{border-top:1px solid var(--line);padding:6px;display:flex;flex-direction:column;gap:1px}
+.wl-nav a,.wl-nav button{display:block;text-align:left;padding:8px 10px;border-radius:6px;color:var(--text);background:none;border:0;font:inherit;font-size:13px;cursor:pointer}
+.wl-nav a:hover,.wl-nav button:hover{background:var(--bg);text-decoration:none}
+.wl-nav a.active{color:var(--pri);font-weight:600}
+.wl-who{display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--line);margin-top:2px}
+.wl-ava{width:26px;height:26px;border-radius:50%;background:var(--pri-soft);color:var(--pri);display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.wl-who .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.charts-row{display:grid;gap:10px;grid-template-columns:1fr}
+@media(min-width:900px){.charts-row{grid-template-columns:1fr 1fr}.charts-row.solo{grid-template-columns:1fr}}
+.chart-ctl{position:absolute;top:8px;right:10px;z-index:4;display:flex;align-items:center;gap:6px}
+.chart-ctl .demo-tag{position:static}
+.chart-expand{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--muted);cursor:pointer}
+.chart-expand:hover{color:var(--pri);border-color:var(--pri)}

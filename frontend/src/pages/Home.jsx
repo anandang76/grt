@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import Chart from '../components/Chart';
 import { Loading } from '../components/ui';
 import { useLiveCandles } from '../hooks/useLiveCandles';
 import { useTicker } from '../hooks/useTicker';
-import { getCandles, quote } from '../lib/candles';
-import { fmtPrice } from '../lib/format';
+import { quote } from '../lib/candles';
+import { isAdmin, useAuth } from '../lib/auth';
+import { fmtPrice, initials } from '../lib/format';
 import { getDhanStatus, getWatchlist } from '../lib/watchlist';
 
 const COLLAPSE_KEY = 'grt_wl_collapsed';
@@ -40,11 +41,8 @@ function SymbolRow({ item, active, onClick }) {
   );
 }
 
-function useChartHeights() {
-  const calc = () => {
-    const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-    return { top: Math.max(320, Math.round(vh * 0.56)), bottom: Math.max(300, Math.round(vh * 0.5)) };
-  };
+function useChartHeight() {
+  const calc = () => Math.max(320, Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.86));
   const [h, setH] = useState(calc);
   useEffect(() => {
     let t;
@@ -57,17 +55,41 @@ function useChartHeights() {
 
 function SymbolCharts({ symbol, tick, live }) {
   const { oneMin, fiveMin } = useLiveCandles(symbol, tick);
-  const h = useChartHeights();
+  const h = useChartHeight();
+  const [solo, setSolo] = useState(null); // null = both side-by-side; '1m' | '5m' = expanded
   const tag = live ? '' : 'DEMO';
+  const toggle = (tf) => setSolo((v) => (v === tf ? null : tf));
+
   return (
-    <div className="stack">
-      <div className="card chart-card">
-        <Chart bars={oneMin} height={h.top} label={`${symbol} · 1m`} tag={tag} />
-      </div>
-      <div className="card chart-card">
-        <Chart bars={fiveMin} height={h.bottom} label={`${symbol} · 5m`} tag={tag} />
-      </div>
+    <div className={`charts-row${solo ? ' solo' : ''}`}>
+      {(!solo || solo === '1m') && (
+        <div className="card chart-card">
+          <Chart bars={oneMin} height={h} label={`${symbol} · 1m`} tag={tag} expanded={solo === '1m'} onToggleExpand={() => toggle('1m')} />
+        </div>
+      )}
+      {(!solo || solo === '5m') && (
+        <div className="card chart-card">
+          <Chart bars={fiveMin} height={h} label={`${symbol} · 5m`} tag={tag} expanded={solo === '5m'} onToggleExpand={() => toggle('5m')} />
+        </div>
+      )}
     </div>
+  );
+}
+
+// Navigation moved into the sidebar (the top header is hidden on the terminal for more chart space).
+function SidebarNav() {
+  const { user, logout } = useAuth();
+  const nav = useNavigate();
+  const doLogout = async () => { await logout(); nav('/login', { replace: true, state: { flash: { type: 'ok', msg: 'You have been logged out.' } } }); };
+  return (
+    <nav className="wl-nav">
+      {isAdmin(user) && <NavLink to="/admin">Admin panel</NavLink>}
+      <NavLink to="/watchlist">Configure watchlist</NavLink>
+      <NavLink to="/broker">Dhan API token</NavLink>
+      <NavLink to="/profile">Profile &amp; password</NavLink>
+      <button type="button" onClick={doLogout}>Log out</button>
+      <div className="wl-who"><span className="wl-ava">{initials(user.name)}</span><span className="small muted">{user.email}</span></div>
+    </nav>
   );
 }
 
@@ -107,6 +129,7 @@ export default function Home() {
       ) : (
         <div className={`terminal${collapsed ? ' collapsed' : ''}`}>
           <aside className="wl-side">
+            <Link className="wl-brand" to="/home"><span className="logo">GR</span><span>Trading</span></Link>
             <div className="wl-side-h">
               <button className="wl-collapse" onClick={toggle} title="Hide watchlist" aria-label="Hide watchlist">‹</button>
               <span>Watchlist</span>
@@ -118,6 +141,7 @@ export default function Home() {
                 <SymbolRow key={item.symbol} item={item} active={item.symbol === active} onClick={() => select(item.symbol)} />
               ))}
             </div>
+            <SidebarNav />
           </aside>
           <section className="wl-main">
             {collapsed && (

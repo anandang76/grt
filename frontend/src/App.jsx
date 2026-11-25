@@ -52,9 +52,14 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Route>
 
-        <Route element={<Layout full />}>
+        <Route element={<Layout bare />}>
           <Route element={<RequireAuth />}>
             <Route path="home" element={<Home />} />
+          </Route>
+        </Route>
+
+        <Route element={<Layout full />}>
+          <Route element={<RequireAuth />}>
             <Route path="watchlist" element={<Watchlist />} />
           </Route>
         </Route>

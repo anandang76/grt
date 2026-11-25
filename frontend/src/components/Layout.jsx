@@ -65,8 +65,18 @@ function AccountMenu({ user }) {
   );
 }
 
-export default function Layout({ narrow = false, full = false }) {
+export default function Layout({ narrow = false, full = false, bare = false }) {
   const { user } = useAuth();
+
+  // Bare layout: no top header/footer — used by the terminal, which puts nav in its left sidebar.
+  if (bare) {
+    return (
+      <>
+        <FlashToast />
+        <main className="wrap wrap-full bare-main"><Outlet /></main>
+      </>
+    );
+  }
 
   return (
     <>

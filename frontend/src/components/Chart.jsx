@@ -46,7 +46,7 @@ function markers(bars, c) {
   return out;
 }
 
-export default function Chart({ bars, height = 420, label = '', tag = '' }) {
+export default function Chart({ bars, height = 420, label = '', tag = '', expanded = false, onToggleExpand = null }) {
   const elRef = useRef(null);
   const legendRef = useRef(null);
   const chartRef = useRef(null);
@@ -153,7 +153,18 @@ export default function Chart({ bars, height = 420, label = '', tag = '' }) {
   return (
     <div className="chartWrap" style={{ height }}>
       <div className="chartLegend" ref={legendRef} />
-      {tag && bars.length > 0 && <span className="demo-tag">{tag}</span>}
+      <div className="chart-ctl">
+        {tag && bars.length > 0 && <span className="demo-tag">{tag}</span>}
+        {onToggleExpand && (
+          <button type="button" className="chart-expand" onClick={onToggleExpand} aria-label={expanded ? 'Show both charts' : 'Expand this chart'} title={expanded ? 'Show both charts' : 'Expand this chart'}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {expanded
+                ? <><path d="M9 3H3v6" /><path d="M3 3l7 7" /><path d="M15 21h6v-6" /><path d="M21 21l-7-7" /></>
+                : <><path d="M15 3h6v6" /><path d="M21 3l-7 7" /><path d="M9 21H3v-6" /><path d="M3 21l7-7" /></>}
+            </svg>
+          </button>
+        )}
+      </div>
       <div className="chartCanvas" ref={elRef} />
       {bars.length === 0 && <div className="chart-empty">No stored data yet — pull it in Admin → History data.</div>}
       {bars.length > 0 && (
