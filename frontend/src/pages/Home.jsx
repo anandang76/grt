@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import Chart from '../components/Chart';
 import { Loading } from '../components/ui';
@@ -68,8 +68,23 @@ function SignalBadge({ p1, p5 }) {
   const s = combineSignal(p1, p5);
   const arrow = s.dir === 'up' ? 'M12 19V5M5 12l7-7 7 7' : s.dir === 'down' ? 'M12 5v14M5 12l7 7 7-7' : 'M5 12h14';
   const mark = (p) => (p > 0 ? '▲' : p < 0 ? '▼' : '–');
+  const [pos, setPos] = useState(() => { try { return JSON.parse(localStorage.getItem('grt_sig_pos')) || { x: 12, y: 150 }; } catch { return { x: 12, y: 150 }; } });
+  const drag = useRef(null);
+
+  const onDown = (e) => {
+    drag.current = { sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y };
+    const move = (ev) => setPos({ x: Math.max(0, drag.current.ox + ev.clientX - drag.current.sx), y: Math.max(0, drag.current.oy + ev.clientY - drag.current.sy) });
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      setPos((p) => { try { localStorage.setItem('grt_sig_pos', JSON.stringify(p)); } catch { /* ignore */ } return p; });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
   return (
-    <div className={`signal-badge sig-${s.level}`} title="Combined 1m + 5m UT Bot signal">
+    <div className={`signal-badge sig-${s.level}`} style={{ left: pos.x, top: pos.y }} onPointerDown={onDown} title="Drag to move · combined 1m + 5m signal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d={arrow} /></svg>
       <div className="sig-txt">{s.text}</div>
       <div className="sig-sub"><span className={p1 >= 0 ? 'pos' : 'neg'}>1m {mark(p1)}</span><span className={p5 >= 0 ? 'pos' : 'neg'}>5m {mark(p5)}</span></div>

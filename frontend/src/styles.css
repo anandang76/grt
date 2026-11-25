@@ -306,7 +306,7 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .chart-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px;color:var(--muted);font-size:14px}
 
 /* ---------- Terminal: bare layout, sidebar nav, side-by-side charts ---------- */
-.bare-main{padding-top:10px;padding-bottom:10px;min-height:100vh}
+main.bare-main{padding-top:4px;padding-bottom:6px;min-height:100vh}
 .wl-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px;color:var(--text);padding:10px 14px;border-bottom:1px solid var(--line)}
 .wl-brand:hover{text-decoration:none}
 @media(min-width:800px){
@@ -340,10 +340,9 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 
 /* ---------- Combined signal badge (floating left) ---------- */
 .charts-wrap{position:relative}
-.charts-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 2px 6px}
+.charts-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 2px 4px;min-height:30px}
 .charts-top-sym{font-weight:700;font-size:14px}
-.signal-badge{top:48px}
-.signal-badge{position:absolute;left:10px;top:14px;z-index:6;display:flex;flex-direction:column;align-items:center;gap:3px;
+.signal-badge{position:absolute;z-index:6;cursor:grab;touch-action:none;display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:10px 12px;border-radius:12px;min-width:92px;box-shadow:0 6px 20px rgba(0,0,0,.18);border:1px solid;background:var(--card)}
 .signal-badge svg{width:26px;height:26px}
 .sig-txt{font-size:12px;font-weight:800;letter-spacing:.02em;text-align:center;line-height:1.1}
