@@ -45,9 +45,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('/watchlist', [WatchlistController::class, 'update']);
     Route::get('/nifty50', [WatchlistController::class, 'nifty50']);
 
-    // Shared Dhan API token — any logged-in user may view and update (expires daily).
+    // Shared Dhan API credentials — any logged-in user may view and update.
+    // Client ID is set once; the access token is re-entered daily — updated separately.
     Route::get('/broker/dhan', [BrokerController::class, 'show']);
-    Route::put('/broker/dhan', [BrokerController::class, 'update']);
+    Route::put('/broker/dhan/client-id', [BrokerController::class, 'updateClientId']);
+    Route::put('/broker/dhan/token', [BrokerController::class, 'updateToken']);
 });
 
 Route::middleware(['auth:sanctum', 'active:admin,superadmin'])->prefix('admin')->group(function () {

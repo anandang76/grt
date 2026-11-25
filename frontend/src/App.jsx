@@ -34,7 +34,6 @@ export default function App() {
           <Route index element={<Landing />} />
           <Route path="terms" element={<Terms />} />
           <Route element={<RequireAuth />}>
-            <Route path="home" element={<Home />} />
             <Route path="watchlist" element={<Watchlist />} />
             <Route path="broker" element={<Broker />} />
           </Route>
@@ -50,6 +49,12 @@ export default function App() {
             </Route>
           </Route>
           <Route path="*" element={<NotFound />} />
+        </Route>
+
+        <Route element={<Layout full />}>
+          <Route element={<RequireAuth />}>
+            <Route path="home" element={<Home />} />
+          </Route>
         </Route>
 
         <Route element={<Layout narrow />}>

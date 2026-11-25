@@ -37,7 +37,7 @@ function AccountMenu({ user }) {
   );
 }
 
-export default function Layout({ narrow = false }) {
+export default function Layout({ narrow = false, full = false }) {
   const { user } = useAuth();
   const { state } = useLocation();
   const flash = state?.flash;
@@ -66,7 +66,7 @@ export default function Layout({ narrow = false }) {
           </nav>
         </div>
       </header>
-      <main className={`wrap${narrow ? ' narrow' : ''}`}>
+      <main className={`wrap${narrow ? ' narrow' : ''}${full ? ' wrap-full' : ''}`}>
         {flash && <Alert type={flash.type}>{flash.msg}</Alert>}
         <Outlet />
       </main>

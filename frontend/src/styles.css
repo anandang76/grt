@@ -148,36 +148,48 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);vertical-align:middle;margin-left:6px}
 .dot-live{background:var(--ok)}.dot-offline{background:var(--err)}
 
+/* ---------- Full-width terminal page ---------- */
+.wrap-full{max-width:none}
+@media(min-width:1280px){.wrap-full{padding-left:22px;padding-right:22px}}
+
 /* ---------- Terminal: watchlist sidebar + charts ---------- */
 .tokbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.terminal{display:grid;gap:16px;grid-template-columns:1fr}
-@media(min-width:800px){.terminal{grid-template-columns:230px 1fr;align-items:start}}
+.terminal{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:800px){.terminal{grid-template-columns:200px 1fr;align-items:start}}
+.terminal.collapsed{grid-template-columns:1fr}
+.terminal.collapsed .wl-side{display:none}
 .wl-side{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-@media(min-width:800px){.wl-side{position:sticky;top:72px}}
-.wl-side-h{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+@media(min-width:800px){.wl-side{position:sticky;top:70px}}
+.wl-side-h{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.wl-side-h span{flex:1}
 .wl-edit{font-size:12px;text-transform:none;letter-spacing:0}
+.wl-collapse{background:none;border:0;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:0 2px;border-radius:4px}
+.wl-collapse:hover{background:var(--bg);color:var(--text)}
+.wl-show{display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:inherit;font-size:13px;font-weight:600;color:var(--text);cursor:pointer}
+.wl-show:hover{border-color:var(--pri);color:var(--pri)}
 .wl-rows{display:flex;overflow-x:auto;scrollbar-width:none}
 .wl-rows::-webkit-scrollbar{display:none}
 @media(min-width:800px){.wl-rows{flex-direction:column;overflow:visible}}
-.wl-row{flex:0 0 auto;display:grid;grid-template-columns:1fr;gap:2px;padding:10px 14px;background:none;border:0;border-right:1px solid var(--line);cursor:pointer;text-align:left;font:inherit;color:var(--text);min-width:120px}
-@media(min-width:800px){.wl-row{grid-template-columns:1fr auto;align-items:baseline;border-right:0;border-bottom:1px solid var(--line);min-width:0}.wl-row:last-child{border-bottom:0}}
+.wl-row{flex:0 0 auto;display:grid;grid-template-columns:1fr auto;gap:0 10px;padding:9px 12px;background:none;border:0;border-right:1px solid var(--line);cursor:pointer;text-align:left;font:inherit;color:var(--text);min-width:130px}
+@media(min-width:800px){.wl-row{border-right:0;border-bottom:1px solid var(--line);min-width:0}.wl-row:last-child{border-bottom:0}}
 .wl-row:hover{background:var(--bg)}
-.wl-row.on{background:var(--pri-soft)}
-.wl-row-s{font-weight:600;font-size:14px}
-.wl-row-p{font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
-.wl-row-c{font-variant-numeric:tabular-nums;font-size:12px;grid-column:1/-1}
-@media(min-width:800px){.wl-row-c{grid-column:auto;text-align:right}}
+.wl-row.on{background:var(--pri-soft);box-shadow:inset 3px 0 0 var(--pri)}
+.wl-row-s{font-weight:600;font-size:13px}
+.wl-row-p{font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;text-align:right}
+.wl-row-c{font-variant-numeric:tabular-nums;font-size:11px;grid-column:1/-1;text-align:right}
 .wl-main{min-width:0}
-.sym-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.sym-head h1{display:inline-block;margin:0 10px 0 0}
+.sym-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.sym-id{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sym-id h1{margin:0}
 .sym-price{text-align:right;font-variant-numeric:tabular-nums}
-.sym-price b{font-size:22px;display:block}
+.sym-price b{font-size:24px;display:block;line-height:1.1}
 .sym-price span{font-size:13px}
-.chart-card{padding:12px}
-.chart-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
-.chart-h h2{margin:0;font-size:14px}
-.chartWrap{position:relative}
-.chartTip{position:absolute;top:6px;left:6px;display:none;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:12px;font-variant-numeric:tabular-nums;pointer-events:none;z-index:3;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.chart-card{padding:8px}
+.chartWrap{position:relative;width:100%}
+.chartCanvas{position:absolute;inset:0}
+.chartLegend{position:absolute;top:8px;left:10px;z-index:3;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:12px;font-variant-numeric:tabular-nums;pointer-events:none;color:var(--muted)}
+.chartLegend b{color:var(--text)}
+.chartLegend>b:first-child{font-size:12px;margin-right:4px}
 
 /* ---------- Watchlist editor ---------- */
 .wl-editor-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
@@ -195,3 +207,11 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .chip{background:var(--pri-soft);color:var(--pri);border-radius:6px;padding:3px 9px;font-size:13px;font-weight:600}
 .kv-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0;font-size:14px}
 .kv-row+.kv-row{border-top:1px solid var(--line)}
+
+/* ---------- Broker credential sections ---------- */
+.sec-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.sec-h h2{margin:0}
+.sec-h p{margin:4px 0 0}
+.edit-ico{flex:none;display:inline-grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);cursor:pointer}
+.edit-ico:hover{border-color:var(--pri);color:var(--pri)}
+.sec-f{display:flex;gap:8px;justify-content:flex-end}

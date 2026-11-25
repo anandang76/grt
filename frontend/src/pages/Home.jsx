@@ -6,14 +6,21 @@ import { getCandles, quote } from '../lib/candles';
 import { fmtPrice } from '../lib/format';
 import { getDhanStatus, getWatchlist } from '../lib/watchlist';
 
+const COLLAPSE_KEY = 'grt_wl_collapsed';
+
 function TokenBanner() {
   const [dhan, setDhan] = useState(null);
   useEffect(() => { getDhanStatus().then((r) => setDhan(r.dhan)).catch(() => {}); }, []);
-  if (!dhan || (dhan.configured && !dhan.stale)) return null;
+  if (!dhan || dhan.ready) return null;
+  const msg = !dhan.client_id
+    ? 'Dhan Client ID not set — live data is unavailable.'
+    : !dhan.token_set
+      ? 'No Dhan access token set — live data is unavailable.'
+      : "Today's Dhan token hasn't been set — live data may be unavailable.";
   return (
     <div className="alert alert-info tokbar">
-      <span>{dhan.configured ? "Today's Dhan token hasn't been set — live data may be unavailable." : 'No Dhan token configured yet.'}</span>
-      <Link className="btn btn-sm" to="/broker">Update token</Link>
+      <span>{msg}</span>
+      <Link className="btn btn-sm" to="/broker">Update Dhan</Link>
     </div>
   );
 }
@@ -25,7 +32,7 @@ function SymbolRow({ item, active, onClick }) {
     <button className={`wl-row${active ? ' on' : ''}`} onClick={onClick}>
       <span className="wl-row-s">{item.symbol}</span>
       <span className={`wl-row-p ${cls}`}>{fmtPrice(q?.ltp)}</span>
-      <span className={`wl-row-c ${cls}`}>{q ? `${q.ch >= 0 ? '+' : ''}${q.chp.toFixed(2)}%` : ''}</span>
+      <span className={`wl-row-c ${cls}`}>{q ? `${q.ch >= 0 ? '▲' : '▼'} ${Math.abs(q.chp).toFixed(2)}%` : ''}</span>
     </button>
   );
 }
@@ -37,8 +44,9 @@ function SymbolCharts({ symbol }) {
   return (
     <div className="stack">
       <div className="sym-head">
-        <div>
+        <div className="sym-id">
           <h1>{symbol}</h1>
+          <span className="muted">NSE</span>
           <span className="badge b-pending" title="Simulated prices, not real market data">DEMO DATA</span>
         </div>
         {q && (
@@ -49,12 +57,10 @@ function SymbolCharts({ symbol }) {
         )}
       </div>
       <div className="card chart-card">
-        <div className="chart-h"><h2>5 Min</h2><span className="muted small">UT Bot · ATR 10</span></div>
-        <Chart bars={fiveMin} height={300} />
+        <Chart bars={fiveMin} height={420} label={`${symbol} · 5m`} />
       </div>
       <div className="card chart-card">
-        <div className="chart-h"><h2>1 Min</h2><span className="muted small">UT Bot · ATR 10</span></div>
-        <Chart bars={oneMin} height={300} />
+        <Chart bars={oneMin} height={320} label={`${symbol} · 1m`} />
       </div>
     </div>
   );
@@ -63,8 +69,17 @@ function SymbolCharts({ symbol }) {
 export default function Home() {
   const [params, setParams] = useSearchParams();
   const [wl, setWl] = useState(null);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(COLLAPSE_KEY) === '1'; } catch { return false; }
+  });
 
   useEffect(() => { getWatchlist().then((r) => setWl(r.watchlist)).catch(() => setWl([])); }, []);
+
+  const toggle = () => setCollapsed((v) => {
+    const next = !v;
+    try { localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0'); } catch { /* ignore */ }
+    return next;
+  });
 
   const selected = params.get('s');
   const active = wl?.some((w) => w.symbol === selected) ? selected : wl?.[0]?.symbol;
@@ -82,11 +97,12 @@ export default function Home() {
           <Link className="btn" to="/watchlist">Choose stocks</Link>
         </div>
       ) : (
-        <div className="terminal">
+        <div className={`terminal${collapsed ? ' collapsed' : ''}`}>
           <aside className="wl-side">
             <div className="wl-side-h">
+              <button className="wl-collapse" onClick={toggle} title="Hide watchlist" aria-label="Hide watchlist">‹</button>
               <span>Watchlist</span>
-              <Link to="/watchlist" title="Edit watchlist" className="wl-edit">Edit</Link>
+              <Link to="/watchlist" className="wl-edit">Edit</Link>
             </div>
             <div className="wl-rows">
               {wl.map((item) => (
@@ -94,7 +110,12 @@ export default function Home() {
               ))}
             </div>
           </aside>
-          <section className="wl-main">{active && <SymbolCharts symbol={active} />}</section>
+          <section className="wl-main">
+            {collapsed && (
+              <button className="wl-show" onClick={toggle} aria-label="Show watchlist">☰ Watchlist</button>
+            )}
+            {active && <SymbolCharts symbol={active} />}
+          </section>
         </div>
       )}
     </>
