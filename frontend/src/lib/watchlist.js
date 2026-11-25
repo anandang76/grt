@@ -10,6 +10,7 @@ export async function getInstruments() {
 }
 
 export const getWatchlist = () => api('/watchlist');
+export const fetchStoredCandles = (symbol) => api(`/candles/${encodeURIComponent(symbol)}`);
 export const saveWatchlist = (symbols) => put('/watchlist', { symbols });
 export const adminSaveWatchlist = (userId, symbols) => put(`/admin/users/${userId}/watchlist`, { symbols });
 

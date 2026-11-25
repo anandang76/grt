@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BrokerController;
+use App\Http\Controllers\CandlesController;
 use App\Http\Controllers\WatchlistController;
 use App\Services\TickerToken;
 use Illuminate\Http\Request;
@@ -45,6 +46,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/watchlist', [WatchlistController::class, 'index']);
     Route::put('/watchlist', [WatchlistController::class, 'update']);
     Route::get('/instruments', [WatchlistController::class, 'instruments']);
+    Route::get('/candles/{symbol}', [CandlesController::class, 'show']);
 
     // Shared Dhan API credentials — any logged-in user may view and update.
     // Client ID is set once; the access token is re-entered daily — updated separately.

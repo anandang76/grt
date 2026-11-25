@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getCandles } from '../lib/candles';
 import { computeUTBot } from '../lib/utBot';
+import { fetchStoredCandles } from '../lib/watchlist';
 
 // Roll a live tick into the forming 1-min / 5-min candle (or start a new one), recomputing
 // the UT Bot each time so BUY/SELL signals and the trailing stop update in real time.
@@ -18,30 +19,44 @@ function applyTick(bars, tfSec, sec, price) {
 }
 
 /**
- * Historical demo candles that then update live from the tick service.
- * `tick` is the latest {s, ltp, ts} for this symbol; each new one advances the chart.
- * Price continuity: we apply the tick's *movement* on top of the symbol's demo history,
- * and anchor live bars to continue right after the last historical bar.
+ * Candles for a symbol: real stored data (Dhan) from the API when available, else demo. The latest
+ * tick then advances the forming candle live (demo motion while a market is open; real base either way).
  */
 export function useLiveCandles(symbol, tick) {
-  const [data, setData] = useState(() => getCandles(symbol));
+  const [data, setData] = useState({ oneMin: [], fiveMin: [] });
   const st = useRef(null);
 
   useEffect(() => {
-    const base = getCandles(symbol);
-    st.current = {
-      one: base.oneMin.map((b) => ({ ...b })),
-      five: base.fiveMin.map((b) => ({ ...b })),
-      price: base.oneMin.at(-1)?.close ?? 100,
-      prevLtp: null,
-      offset: null,
+    let alive = true;
+    st.current = null;
+    setData({ oneMin: [], fiveMin: [] });
+
+    const seed = (oneMin, fiveMin, real) => {
+      if (!alive) return;
+      st.current = {
+        one: oneMin.map((b) => ({ ...b })),
+        five: fiveMin.map((b) => ({ ...b })),
+        price: oneMin.at(-1)?.close ?? 100,
+        prevLtp: null,
+        offset: null,
+        real, // real Dhan data is shown as-is (no demo tick motion); demo data animates
+      };
+      setData({ oneMin: st.current.one, fiveMin: st.current.five });
     };
-    setData({ oneMin: st.current.one, fiveMin: st.current.five });
+
+    fetchStoredCandles(symbol)
+      .then((r) => {
+        if (r.oneMin?.length) seed(r.oneMin, r.fiveMin, true);
+        else { const d = getCandles(symbol); seed(d.oneMin, d.fiveMin, false); }
+      })
+      .catch(() => { const d = getCandles(symbol); seed(d.oneMin, d.fiveMin, false); });
+
+    return () => { alive = false; };
   }, [symbol]);
 
   useEffect(() => {
     const s = st.current;
-    if (!tick || !s) return;
+    if (!tick || !s || s.real) return; // real data stays as-is; only demo symbols animate
 
     if (s.prevLtp == null) s.prevLtp = tick.ltp;
     s.price = Math.max(1, +(s.price + (tick.ltp - s.prevLtp)).toFixed(2));
@@ -50,7 +65,7 @@ export function useLiveCandles(symbol, tick) {
     const rawSec = Math.floor((tick.ts || Date.now()) / 1000);
     if (s.offset == null) {
       const lastTs = s.one[s.one.length - 1]?.ts_epoch ?? rawSec;
-      s.offset = lastTs + 60 - Math.floor(rawSec / 60) * 60; // first live 1-min bar sits right after history
+      s.offset = lastTs + 60 - Math.floor(rawSec / 60) * 60;
     }
     const sec = rawSec + s.offset;
 

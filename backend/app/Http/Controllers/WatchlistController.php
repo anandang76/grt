@@ -12,15 +12,22 @@ class WatchlistController extends Controller
 {
     public const MAX = 25;
 
-    /** A user's selected instruments, in their saved order. */
+    /** A user's selected instruments, in their saved order, with real LTP/change where available. */
     public static function forUser(int $userId): array
     {
         $symbols = DB::table('watchlist_items')->where('user_id', $userId)->orderBy('sort')->pluck('symbol');
         $map = Nifty50::map();
+        $stats = DB::table('instrument_stats')->get()->keyBy('symbol');
 
         return $symbols
             ->filter(fn ($s) => isset($map[$s]))
-            ->map(fn ($s) => ['symbol' => $s, 'name' => $map[$s]['name'], 'kind' => $map[$s]['kind']])
+            ->map(function ($s) use ($map, $stats) {
+                $r = $stats[$s] ?? null;
+                return [
+                    'symbol' => $s, 'name' => $map[$s]['name'], 'kind' => $map[$s]['kind'],
+                    'ltp' => $r->ltp ?? null, 'chp' => $r->d1_pct ?? null, 'live' => $r !== null,
+                ];
+            })
             ->values()->all();
     }
 

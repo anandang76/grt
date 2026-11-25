@@ -27,46 +27,15 @@ function TokenBanner() {
   );
 }
 
-// Live prices for every watchlist symbol: the tick's movement applied on top of each
-// symbol's demo history (keeps the sidebar consistent with the charts).
-function useLivePrices(symbols, ticks) {
-  const [prices, setPrices] = useState({});
-  const ref = useRef({});
-  useEffect(() => {
-    for (const s of symbols) {
-      if (!ref.current[s]) {
-        const c = getCandles(s).oneMin;
-        ref.current[s] = { open: c[0]?.open ?? 100, price: c.at(-1)?.close ?? 100, prevLtp: null };
-      }
-    }
-  }, [symbols]);
-  useEffect(() => {
-    const next = {};
-    let changed = false;
-    for (const s of symbols) {
-      const t = ticks[s];
-      const r = ref.current[s];
-      if (!t || !r) continue;
-      if (r.prevLtp == null) r.prevLtp = t.ltp;
-      r.price = Math.max(1, +(r.price + (t.ltp - r.prevLtp)).toFixed(2));
-      r.prevLtp = t.ltp;
-      const ch = r.price - r.open;
-      next[s] = { ltp: r.price, ch, chp: r.open ? (ch / r.open) * 100 : 0 };
-      changed = true;
-    }
-    if (changed) setPrices((p) => ({ ...p, ...next }));
-  }, [ticks, symbols]);
-  return prices;
-}
-
-function SymbolRow({ item, live, active, onClick }) {
-  const q = live || quote(item.symbol);
-  const cls = !q ? '' : q.ch >= 0 ? 'pos' : 'neg';
+function SymbolRow({ item, active, onClick }) {
+  // Real LTP + day % from the API; demo-only symbols fall back to the client generator.
+  const q = item.ltp != null ? { ltp: item.ltp, chp: item.chp ?? 0 } : quote(item.symbol);
+  const cls = !q ? '' : q.chp >= 0 ? 'pos' : 'neg';
   return (
     <button className={`wl-row${active ? ' on' : ''}`} onClick={onClick}>
       <span className="wl-row-s">{item.symbol}</span>
       <span className={`wl-row-p ${cls}`}>{fmtPrice(q?.ltp)}</span>
-      <span className={`wl-row-c ${cls}`}>{q ? `${q.ch >= 0 ? '▲' : '▼'} ${Math.abs(q.chp).toFixed(2)}%` : ''}</span>
+      <span className={`wl-row-c ${cls}`}>{q ? `${q.chp >= 0 ? '▲' : '▼'} ${Math.abs(q.chp).toFixed(2)}%` : ''}</span>
     </button>
   );
 }
@@ -86,16 +55,17 @@ function useChartHeights() {
   return h;
 }
 
-function SymbolCharts({ symbol, tick }) {
+function SymbolCharts({ symbol, tick, live }) {
   const { oneMin, fiveMin } = useLiveCandles(symbol, tick);
   const h = useChartHeights();
+  const tag = live ? '' : 'DEMO';
   return (
     <div className="stack">
       <div className="card chart-card">
-        <Chart bars={oneMin} height={h.top} label={`${symbol} · 1m`} tag="DEMO" />
+        <Chart bars={oneMin} height={h.top} label={`${symbol} · 1m`} tag={tag} />
       </div>
       <div className="card chart-card">
-        <Chart bars={fiveMin} height={h.bottom} label={`${symbol} · 5m`} tag="DEMO" />
+        <Chart bars={fiveMin} height={h.bottom} label={`${symbol} · 5m`} tag={tag} />
       </div>
     </div>
   );
@@ -112,7 +82,6 @@ export default function Home() {
 
   const symbols = wl ? wl.map((w) => w.symbol) : [];
   const { ticks, status } = useTicker(symbols);
-  const livePrices = useLivePrices(symbols, ticks);
 
   const toggle = () => setCollapsed((v) => {
     const next = !v;
@@ -146,7 +115,7 @@ export default function Home() {
             </div>
             <div className="wl-rows">
               {wl.map((item) => (
-                <SymbolRow key={item.symbol} item={item} live={livePrices[item.symbol]} active={item.symbol === active} onClick={() => select(item.symbol)} />
+                <SymbolRow key={item.symbol} item={item} active={item.symbol === active} onClick={() => select(item.symbol)} />
               ))}
             </div>
           </aside>
@@ -154,7 +123,7 @@ export default function Home() {
             {collapsed && (
               <button className="wl-show" onClick={toggle} aria-label="Show watchlist">☰ Watchlist</button>
             )}
-            {active && <SymbolCharts key={active} symbol={active} tick={ticks[active]} />}
+            {active && <SymbolCharts key={active} symbol={active} tick={ticks[active]} live={wl.find((w) => w.symbol === active)?.live} />}
           </section>
         </div>
       )}
