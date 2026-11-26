@@ -92,6 +92,7 @@ return [
     $nxt('BOSCHLTD', 'Bosch', 32000),
     $nxt('BRITANNIA', 'Britannia Industries', 4800),
     $nxt('CANBK', 'Canara Bank', 95),
+    $nxt('LUPIN', 'Lupin', 2000),
     $nxt('CGPOWER', 'CG Power & Industrial', 680),
     $nxt('CHOLAFIN', 'Cholamandalam Investment', 1400),
     $nxt('COLPAL', 'Colgate-Palmolive India', 2600),
