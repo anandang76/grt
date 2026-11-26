@@ -306,7 +306,7 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .chart-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px;color:var(--muted);font-size:14px}
 
 /* ---------- Terminal: bare layout, sidebar nav, side-by-side charts ---------- */
-main.bare-main{padding-top:4px;padding-bottom:6px;min-height:100vh}
+main.bare-main{padding-top:0;padding-bottom:6px;min-height:100vh}
 .wl-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px;color:var(--text);padding:10px 14px;border-bottom:1px solid var(--line)}
 .wl-brand:hover{text-decoration:none}
 @media(min-width:800px){
