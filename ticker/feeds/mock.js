@@ -25,18 +25,29 @@ function marketOpen(symbol, t) {
   return t.mins >= 555 && t.mins <= 930;                    // NSE/BSE equities & indices 09:15–15:30
 }
 
-export async function createFeed({ onTick }) {
+export async function createFeed({ onTick, onDepth }) {
   const state = new Map();
-  const active = new Set();
+  const active = new Map(); // key -> mode ('ticker' | 'full')
 
   const seed = (s) => {
     const c = BASE[s] ?? 100 + (([...s].reduce((a, ch) => a + ch.charCodeAt(0), 0) * 7) % 2900);
     state.set(s, { c, o: c, h: c, l: c, ltp: c, v: 0 });
   };
 
+  // A plausible 5-level depth around the last price (demo only).
+  const depthFor = (s, st) => {
+    const step = Math.max(0.05, +(st.ltp * 0.0005).toFixed(2));
+    const bid = [], ask = [];
+    for (let i = 0; i < 5; i++) {
+      bid.push({ p: +(st.ltp - step * (i + 1)).toFixed(2), q: (i + 1) * 100 + Math.floor(Math.random() * 100), o: 1 + (i % 4) });
+      ask.push({ p: +(st.ltp + step * (i + 1)).toFixed(2), q: (i + 1) * 100 + Math.floor(Math.random() * 100), o: 1 + (i % 4) });
+    }
+    return { s, ltp: st.ltp, open: st.o, prevClose: st.c, high: st.h, low: st.l, vol: st.v, bid, ask, ts: Date.now() };
+  };
+
   const timer = setInterval(() => {
     const t = istNow();
-    for (const s of active) {
+    for (const [s, mode] of active) {
       if (!marketOpen(s, t)) continue; // market closed → price frozen, no tick
       const st = state.get(s);
       st.ltp = Math.max(0.05, +(st.ltp * (1 + (Math.random() - 0.5) * 0.002)).toFixed(2));
@@ -45,18 +56,17 @@ export async function createFeed({ onTick }) {
       st.v += Math.floor(Math.random() * 500);
       const ch = +(st.ltp - st.c).toFixed(2);
       onTick({ s, ltp: st.ltp, ch, chp: +((ch / st.c) * 100).toFixed(2), o: st.o, h: st.h, l: st.l, c: st.c, v: st.v, ts: Date.now() });
+      if (mode === 'full') onDepth?.(depthFor(s, st));
     }
   }, 1000);
 
   return {
-    subscribe(symbols) {
-      for (const s of symbols) {
-        if (!state.has(s)) seed(s);
-        active.add(s);
-      }
+    ensure(key, { mode = 'ticker' } = {}) {
+      if (!state.has(key)) seed(key);
+      active.set(key, mode);
     },
-    unsubscribe(symbols) {
-      for (const s of symbols) active.delete(s);
+    remove(key) {
+      active.delete(key);
     },
     close() {
       clearInterval(timer);

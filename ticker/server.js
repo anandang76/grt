@@ -39,56 +39,91 @@ function verifyToken(token) {
   }
 }
 
-/* ---------- Subscriptions ---------- */
-const subscribers = new Map(); // symbol -> Set<ws>
-const lastTick = new Map(); // symbol -> tick
+/* ---------- Subscriptions ----------
+ * A client subscribes underlyings by symbol ({op:'sub', symbols:[...]}) and option strikes /
+ * the depth card by explicit descriptor ({op:'sub', instruments:[{s, segment, securityId, mode}]}).
+ * `mode` is 'ticker' (LTP) or 'full' (adds 5-level depth). Each instrument is subscribed upstream
+ * once at the strongest mode any connected client wants, and fanned out to all of them.
+ */
+const subscribers = new Map(); // key -> Set<ws>
+const desc = new Map();        // key -> { segment, securityId } (options only)
+const lastTick = new Map();    // key -> tick
+const lastDepth = new Map();   // key -> depth
 
 function send(ws, msg) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
 }
 
+// Strongest mode any current subscriber wants for this key.
+function effective(key) {
+  const set = subscribers.get(key);
+  if (set) for (const ws of set) if (ws.subs.get(key) === 'full') return 'full';
+  return 'ticker';
+}
+
+function fanout(key, msg) {
+  const set = subscribers.get(key);
+  if (!set) return;
+  const s = JSON.stringify(msg);
+  for (const ws of set) if (ws.readyState === ws.OPEN) ws.send(s);
+}
+
 function onTick(tick) {
   lastTick.set(tick.s, tick);
-  const set = subscribers.get(tick.s);
-  if (!set) return;
-  const msg = JSON.stringify({ t: 'tick', d: tick });
-  for (const ws of set) if (ws.readyState === ws.OPEN) ws.send(msg);
+  fanout(tick.s, { t: 'tick', d: tick });
+}
+
+function onDepth(d) {
+  if (!d.s) return;
+  lastDepth.set(d.s, d);
+  fanout(d.s, { t: 'depth', d });
 }
 
 const { createFeed } = await import(`./feeds/${FEED.replace(/[^a-z]/g, '')}.js`);
-const feed = await createFeed({ onTick, log });
+const feed = await createFeed({ onTick, onDepth, log });
 log(`feed "${FEED}" ready`);
 
-function subscribe(ws, symbols) {
-  const fresh = [];
-  for (const raw of symbols) {
-    const s = String(raw).toUpperCase().slice(0, 40);
-    if (ws.symbols.has(s)) continue;
-    if (ws.symbols.size >= MAX_SYMBOLS) return send(ws, { t: 'error', m: `Max ${MAX_SYMBOLS} symbols per connection` });
-    ws.symbols.add(s);
-    if (!subscribers.has(s)) {
-      subscribers.set(s, new Set());
-      fresh.push(s);
-    }
-    subscribers.get(s).add(ws);
-    if (lastTick.has(s)) send(ws, { t: 'tick', d: lastTick.get(s) });
+// Normalise a sub/unsub message into [{ key, segment?, securityId?, mode }].
+function items(msg) {
+  const out = [];
+  for (const raw of Array.isArray(msg.symbols) ? msg.symbols : []) {
+    const key = String(raw).toUpperCase().slice(0, 40);
+    if (key) out.push({ key, mode: 'ticker' });
   }
-  if (fresh.length) feed.subscribe(fresh);
+  for (const it of Array.isArray(msg.instruments) ? msg.instruments : []) {
+    const key = String(it.s).toUpperCase().slice(0, 40);
+    if (key) out.push({ key, segment: it.segment, securityId: it.securityId, mode: it.mode === 'full' ? 'full' : 'ticker' });
+  }
+  return out;
 }
 
-function unsubscribe(ws, symbols) {
-  const gone = [];
-  for (const raw of symbols) {
-    const s = String(raw).toUpperCase();
-    if (!ws.symbols.delete(s)) continue;
-    const set = subscribers.get(s);
+function subscribe(ws, list) {
+  for (const it of list) {
+    if (!ws.subs.has(it.key) && ws.subs.size >= MAX_SYMBOLS) { send(ws, { t: 'error', m: `Max ${MAX_SYMBOLS} instruments per connection` }); break; }
+    if (!subscribers.has(it.key)) subscribers.set(it.key, new Set());
+    subscribers.get(it.key).add(ws);
+    ws.subs.set(it.key, it.mode);
+    if (it.segment && it.securityId != null) desc.set(it.key, { segment: it.segment, securityId: it.securityId });
+    feed.ensure(it.key, { ...desc.get(it.key), mode: effective(it.key) }); // idempotent; upgrades if needed
+    if (lastTick.has(it.key)) send(ws, { t: 'tick', d: lastTick.get(it.key) });
+    if (lastDepth.has(it.key)) send(ws, { t: 'depth', d: lastDepth.get(it.key) });
+  }
+}
+
+function unsubscribe(ws, keys) {
+  for (const key of keys) {
+    if (!ws.subs.delete(key)) continue;
+    const set = subscribers.get(key);
     set?.delete(ws);
     if (set && set.size === 0) {
-      subscribers.delete(s);
-      gone.push(s);
+      subscribers.delete(key);
+      desc.delete(key);
+      lastDepth.delete(key);
+      feed.remove(key);
+    } else {
+      feed.ensure(key, { ...desc.get(key), mode: effective(key) }); // may downgrade full -> ticker
     }
   }
-  if (gone.length) feed.unsubscribe(gone);
 }
 
 /* ---------- Servers ---------- */
@@ -115,7 +150,7 @@ const wss = new WebSocketServer({
 
 wss.on('connection', (ws, req) => {
   ws.user = req.claims.sub;
-  ws.symbols = new Set();
+  ws.subs = new Map(); // key -> mode
   ws.alive = true;
   ws.on('pong', () => (ws.alive = true));
   ws.on('message', (buf) => {
@@ -125,11 +160,10 @@ wss.on('connection', (ws, req) => {
     } catch {
       return send(ws, { t: 'error', m: 'Bad JSON' });
     }
-    const symbols = Array.isArray(msg.symbols) ? msg.symbols : [];
-    if (msg.op === 'sub') subscribe(ws, symbols);
-    else if (msg.op === 'unsub') unsubscribe(ws, symbols);
+    if (msg.op === 'sub') subscribe(ws, items(msg));
+    else if (msg.op === 'unsub') unsubscribe(ws, items(msg).map((it) => it.key));
   });
-  ws.on('close', () => unsubscribe(ws, [...ws.symbols]));
+  ws.on('close', () => unsubscribe(ws, [...ws.subs.keys()]));
   send(ws, { t: 'hello', feed: FEED, demo: FEED === 'mock' });
 });
 
