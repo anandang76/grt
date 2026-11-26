@@ -18,10 +18,10 @@ function TokenBanner() {
   useEffect(() => { getDhanStatus().then((r) => setDhan(r.dhan)).catch(() => {}); }, []);
   if (!dhan || dhan.ready) return null;
   const msg = !dhan.client_id
-    ? 'Dhan Client ID not set — live data is unavailable.'
+    ? 'Dhan Client ID not set — showing stored history only.'
     : !dhan.token_set
-      ? 'No Dhan access token set — live data is unavailable.'
-      : "Today's Dhan token hasn't been set — live data may be unavailable.";
+      ? 'No Dhan access token set — showing stored history only.'
+      : 'Dhan token expired — live data paused, showing stored history. Update the token to resume.';
   return (
     <div className="alert alert-info tokbar">
       <span>{msg}</span>

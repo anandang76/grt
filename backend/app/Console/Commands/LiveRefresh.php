@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\HistoryService;
+use App\Support\DhanCredentials;
 use App\Support\MasterList;
 use App\Support\Nifty50;
 use Carbon\CarbonImmutable;
@@ -24,6 +25,12 @@ class LiveRefresh extends Command
 
     public function handle(HistoryService $history): int
     {
+        // No valid token for the day → leave stored history untouched (no failed Dhan calls).
+        if (! DhanCredentials::isReady()) {
+            $this->info('live-refresh: Dhan token not active; skipping.');
+            return self::SUCCESS;
+        }
+
         $now = CarbonImmutable::now('Asia/Kolkata');
         $date = $now->format('Y-m-d');
         $map = Nifty50::map();

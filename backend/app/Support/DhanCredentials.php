@@ -11,6 +11,9 @@ use App\Models\Setting;
  */
 class DhanCredentials
 {
+    /** A freshly-entered token drives live data for this many hours, then auto-expires. */
+    public const TOKEN_TTL_HOURS = 18;
+
     private static ?array $cache = null;
 
     public static function current(): array
@@ -21,14 +24,21 @@ class DhanCredentials
         $client = Setting::get('dhan_client_id');
         $token = Setting::get('dhan_token');
         $tokenAt = $token?->updated_at;
+        $expiresAt = $tokenAt?->copy()->addHours(self::TOKEN_TTL_HOURS);
 
         return self::$cache = [
             'client_id' => $client?->value,
             'token' => $token?->value,
             'token_updated_at' => $tokenAt,
-            // Ready to call Dhan only when both exist and the token is from today.
-            'ready' => (bool) ($client?->value && $token?->value && $tokenAt && $tokenAt->isToday()),
+            'expires_at' => $token?->value ? $expiresAt : null,
+            // Ready to call Dhan only when both exist and the token is within its 18-hour window.
+            'ready' => (bool) ($client?->value && $token?->value && $expiresAt && $expiresAt->isFuture()),
         ];
+    }
+
+    public static function expiresAt(): ?\Carbon\CarbonInterface
+    {
+        return self::current()['expires_at'];
     }
 
     public static function clientId(): ?string

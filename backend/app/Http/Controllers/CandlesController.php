@@ -23,7 +23,8 @@ class CandlesController extends Controller
         }
 
         // Near-live: pull today's latest intraday from Dhan before serving (used by the poller).
-        if ($r->boolean('fresh') && DhanClient::isMapped($symbol) && DhanCredentials::current()['token']) {
+        // Only when the token is within its 18-hour window; otherwise serve stored history as-is.
+        if ($r->boolean('fresh') && DhanClient::isMapped($symbol) && DhanCredentials::isReady()) {
             try {
                 app(HistoryService::class)->updateDay($symbol, CarbonImmutable::now('Asia/Kolkata')->format('Y-m-d'));
             } catch (\Throwable $e) {

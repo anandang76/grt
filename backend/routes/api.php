@@ -31,7 +31,10 @@ Route::get('/ticker/feed-config', function (Request $r) {
     $instruments = DB::table('instrument_map')->get()
         ->mapWithKeys(fn ($m) => [$m->symbol => ['securityId' => $m->security_id, 'segment' => $m->segment]]);
 
-    return ['token' => $c['token'], 'clientId' => $c['client_id'], 'instruments' => $instruments];
+    // Only hand the ticker a token while it's within its 18-hour window. When stale we return a
+    // null token so the feed stays idle (no Dhan auth attempts / reconnect noise) — the charts
+    // then serve stored history only until someone updates the token.
+    return ['token' => $c['ready'] ? $c['token'] : null, 'clientId' => $c['ready'] ? $c['client_id'] : null, 'instruments' => $instruments];
 });
 
 Route::prefix('auth')->name('auth.')->controller(AuthController::class)->group(function () {

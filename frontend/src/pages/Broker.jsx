@@ -101,13 +101,14 @@ function TokenSection({ dhan, onSaved }) {
           <div className="kv-row">
             <span className="muted">Status</span>
             {dhan.token_set
-              ? <Badge value={dhan.token_stale ? 'pending' : 'active'} label={dhan.token_stale ? 'Needs today’s token' : 'Set for today'} />
+              ? <Badge value={dhan.token_stale ? 'pending' : 'active'} label={dhan.token_stale ? 'Expired — update to resume' : `Active · ${dhan.hours_left}h left`} />
               : <Badge value="inactive" label="Not set" />}
           </div>
           {dhan.token_set && (
             <>
               <div className="kv-row"><span className="muted">Token</span><code className="temp">{dhan.token_masked}</code></div>
               <div className="kv-row"><span className="muted">Updated</span><span>{fmtDate(dhan.token_updated_at)}{dhan.token_updated_by ? ` · by ${dhan.token_updated_by}` : ''}</span></div>
+              <div className="kv-row"><span className="muted">{dhan.token_stale ? 'Expired' : 'Expires'}</span><span>{fmtDate(dhan.expires_at)} · {dhan.ttl_hours}h after it was set</span></div>
             </>
           )}
           {ok && <Alert type="ok">{ok}</Alert>}

@@ -56,8 +56,10 @@ class BrokerController extends Controller
         $tok = Setting::get(self::TOKEN);
         $token = $tok?->value;
         $tokenAt = $tok?->updated_at;
-        // The daily token is stale once it's from a previous calendar day.
-        $tokenStale = ! $tokenAt || ! $tokenAt->isToday();
+        $ttl = DhanCredentials::TOKEN_TTL_HOURS;
+        $expiresAt = $tokenAt?->copy()->addHours($ttl);
+        // The token drives live data for 18 hours after it's set, then auto-expires.
+        $active = $expiresAt && $expiresAt->isFuture();
 
         return [
             'client_id' => $client?->value,                 // shown in full: it identifies the account, not a secret on its own
@@ -67,8 +69,11 @@ class BrokerController extends Controller
             'token_masked' => $token ? substr($token, 0, 6).'…'.substr($token, -4) : null,
             'token_updated_at' => $tokenAt,
             'token_updated_by' => $tok?->updated_by_name,
-            'token_stale' => $token ? $tokenStale : true,
-            'ready' => (bool) ($client?->value && $token && ! $tokenStale),
+            'token_stale' => $token ? ! $active : true,
+            'ready' => (bool) ($client?->value && $token && $active),
+            'ttl_hours' => $ttl,
+            'expires_at' => $token ? $expiresAt : null,
+            'hours_left' => ($token && $active) ? round(now()->diffInMinutes($expiresAt) / 60, 1) : 0,
         ];
     }
 }
