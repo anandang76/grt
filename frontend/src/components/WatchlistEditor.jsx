@@ -80,14 +80,16 @@ function GroupTable({ label, rows, picked, toggle, sort, setSort, atCap }) {
   );
 }
 
-/** Grouped, searchable, sortable instrument picker. Controlled by a parent that saves via onSave(symbols). */
-export default function WatchlistEditor({ initial = [], onSave, onCancel, saving, error }) {
+/** Grouped, searchable, sortable instrument picker. Controlled by a parent that saves via onSave(symbols).
+ *  `fetcher` supplies {instruments, groups, max}; defaults to the user's selectable list. */
+export default function WatchlistEditor({ initial = [], onSave, onCancel, saving, error, fetcher = getInstruments, emptyHint, saveLabel = 'Save watchlist' }) {
   const [data, setData] = useState(null);
   const [picked, setPicked] = useState(() => new Set(initial.map((s) => (typeof s === 'string' ? s : s.symbol))));
   const [q, setQ] = useState('');
   const [sort, setSort] = useState({ key: null, dir: 1 });
 
-  useEffect(() => { getInstruments().then(setData).catch(() => setData({ instruments: [], groups: {}, max: 25 })); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetcher().then(setData).catch(() => setData({ instruments: [], groups: {}, max: 25 })); }, []);
 
   const max = data?.max ?? 25;
   const atCap = picked.size >= max;
@@ -110,13 +112,25 @@ export default function WatchlistEditor({ initial = [], onSave, onCancel, saving
 
   if (!data) return <div className="empty">Loading instruments…</div>;
 
+  if (!data.instruments.length) {
+    return (
+      <div className="wl-editor">
+        <Alert>{error}</Alert>
+        <div className="card center" style={{ padding: 28 }}>
+          <p className="sub" style={{ margin: 0 }}>{emptyHint || "No scripts are enabled yet. An admin needs to set this week's master list before you can build a watchlist."}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="wl-editor">
       <div className="wl-editor-h">
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search symbol or name…" aria-label="Search instruments" />
         <span className="muted small">{picked.size} / {max} selected</span>
-        <Button className="btn-sm" busy={saving} onClick={() => onSave([...picked])}>Save watchlist</Button>
+        <Button className="btn-sm" busy={saving} onClick={() => onSave([...picked])}>{saveLabel}</Button>
       </div>
+      {data.restricted && <p className="muted small" style={{ margin: '0 0 10px' }}>Choose from this week’s master list — {data.instruments.length} scripts available.</p>}
       <Alert>{error}</Alert>
 
       {GROUP_ORDER.map((g) => (
@@ -125,7 +139,7 @@ export default function WatchlistEditor({ initial = [], onSave, onCancel, saving
 
       <div className="wl-editor-f">
         {onCancel && <button type="button" className="btn btn-line" onClick={onCancel} disabled={saving}>Cancel</button>}
-        <Button busy={saving} onClick={() => onSave([...picked])}>Save watchlist</Button>
+        <Button busy={saving} onClick={() => onSave([...picked])}>{saveLabel}</Button>
       </div>
     </div>
   );

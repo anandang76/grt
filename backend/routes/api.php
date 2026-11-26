@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\HistoryController;
+use App\Http\Controllers\Admin\MasterListController;
 use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
@@ -78,6 +79,10 @@ Route::middleware(['auth:sanctum', 'active:admin,superadmin'])->prefix('admin')-
     Route::get('/users/{user}', [UserController::class, 'show']);
     Route::post('/users/{user}/action', [UserController::class, 'action']);
     Route::put('/users/{user}/watchlist', [UserController::class, 'setWatchlist']);
+
+    // Weekly master list: the <=10 scripts enabled for the dry run (users pick from these).
+    Route::get('/master-list', [MasterListController::class, 'show']);
+    Route::put('/master-list', [MasterListController::class, 'update']);
 
     // History data tool: pull & store intraday candles per script/day.
     Route::get('/history/symbols', [HistoryController::class, 'symbols']);

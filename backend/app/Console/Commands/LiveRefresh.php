@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\HistoryService;
+use App\Support\MasterList;
 use App\Support\Nifty50;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -28,7 +29,7 @@ class LiveRefresh extends Command
         $map = Nifty50::map();
 
         $symbols = DB::table('watchlist_items')->distinct()->pluck('symbol')
-            ->filter(fn ($s) => isset($map[$s]) && $this->open($map[$s]['kind'], $now))
+            ->filter(fn ($s) => isset($map[$s]) && (! MasterList::active() || MasterList::has($s)) && $this->open($map[$s]['kind'], $now))
             ->values();
 
         $done = 0;

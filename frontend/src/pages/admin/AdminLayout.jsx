@@ -5,6 +5,7 @@ export default function AdminLayout() {
   const { user } = useAuth();
   const tabs = [
     ['/admin', 'Overview', true],
+    ['/admin/master-list', 'Master list'],
     ['/admin/users', 'Users'],
     ['/admin/history', 'History data'],
     ...(isSuper(user) ? [['/admin/roles', 'Roles'], ['/admin/activity', 'Activity']] : []),
