@@ -227,7 +227,7 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .live-live{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
 .live-connecting{background:var(--warn)}
 .live-offline{background:var(--err)}
-.chartZoom{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:3;display:flex;gap:1px;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.chartZoom{position:absolute;right:10px;bottom:8px;z-index:3;display:flex;gap:1px;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .chartZoom button{height:28px;min-width:34px;padding:0 6px;border:0;background:var(--card);color:var(--text);font-size:17px;line-height:1;cursor:pointer}
 .chartZoom-reset{font-size:12px!important;font-weight:600}
 .chartZoom button:hover{background:var(--bg);color:var(--pri)}
