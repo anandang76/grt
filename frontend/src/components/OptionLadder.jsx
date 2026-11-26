@@ -1,11 +1,34 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getOptionChain, optKey, windowStrikes } from '../lib/options';
 import { useOptionFeed } from '../hooks/useOptionFeed';
+import { bestAsk, buyLeg, getPositions } from '../lib/paper';
 import { fmtPrice } from '../lib/format';
 
 const fmtExpiry = (iso) => (iso ? new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short' }).format(new Date(`${iso}T00:00:00`)) : '');
 const qty = (n) => (n ?? 0).toLocaleString('en-IN');
 const exchOf = (seg) => (seg === 'BSE_FNO' ? 'BSE' : seg === 'MCX_COMM' ? 'MCX' : 'NSE');
+
+// Buy / Avg1 / Avg2 — paper-buy this leg at the live ask. Stages fill in order; done ones disable.
+function BuyBar({ leg, type, strike, lot, d, pos, busy, onBuy }) {
+  const ask = bestAsk(d);
+  const done = new Set(pos?.stages_done || []);
+  const btn = (stage, label) => {
+    const prevOk = stage === 'buy' || (stage === 'avg1' && done.has('buy')) || (stage === 'avg2' && done.has('avg1'));
+    const disabled = done.has(stage) || !prevOk || ask == null || busy;
+    return (
+      <button type="button" className={`pt-btn ${type === 'CE' ? 'ce' : 'pe'}${done.has(stage) ? ' done' : ''}`} disabled={disabled} onClick={() => onBuy(leg, type, strike, lot, stage, ask)}>
+        {done.has(stage) ? `✓ ${label}` : label}
+      </button>
+    );
+  };
+  return (
+    <div className="pt-bar">
+      <span className="pt-ask">Buy @ {ask != null ? fmtPrice(ask) : '—'}</span>
+      <div className="pt-btns">{btn('buy', 'Buy')}{btn('avg1', 'Avg1')}{btn('avg2', 'Avg2')}</div>
+      {pos && <span className="pt-held">Held {pos.qty} @ {fmtPrice(pos.avg_price)}</span>}
+    </div>
+  );
+}
 
 // Zerodha/Dhan-style 5-level market depth for one option leg (fed live by the websocket).
 function DepthCard({ d }) {
@@ -73,6 +96,31 @@ export default function OptionLadder({ symbol, spot, dir }) {
 
   const { ticks, depth } = useOptionFeed(instruments);
 
+  const [positions, setPositions] = useState({}); // open positions by securityId
+  const [busy, setBusy] = useState(false);
+  const loadPositions = useCallback(() => {
+    getPositions().then((r) => {
+      const m = {};
+      for (const p of r.positions) if (p.status === 'open') m[p.security_id] = p;
+      setPositions(m);
+    }).catch(() => {});
+  }, []);
+  useEffect(() => { loadPositions(); }, [loadPositions]);
+
+  const doBuy = async (l, type, strike, lot, stage, price) => {
+    if (price == null || busy) return;
+    setBusy(true);
+    try {
+      await buyLeg({
+        stage, security_id: l.securityId, segment: l.segment, underlying: chain.underlying,
+        strike, option_type: type, expiry: chain.expiry, dhan_symbol: l.dhanSymbol,
+        lot_size: lot || 1, price,
+      });
+      loadPositions();
+    } catch { /* surfaced by the disabled state / next load */ }
+    setBusy(false);
+  };
+
   if (failed || (chain && !chain.strikes.length)) return null;
   if (!chain) return <div className="opt-wrap"><div className="opt-head">Loading option chain…</div></div>;
 
@@ -93,20 +141,24 @@ export default function OptionLadder({ symbol, spot, dir }) {
     );
   };
 
-  const detail = (l, type) => (
-    <div className={`opt-depth ${type === 'CE' ? 'ce' : 'pe'}`}>
-      {l ? (
-        <>
-          <div className="opt-depth-h">
-            <span className={`opt-depth-leg ${type === 'CE' ? 'ce' : 'pe'}`}>{type === 'CE' ? 'CALL' : 'PUT'}</span>
-            <b>{l.dhanSymbol}</b>
-            <span className={`exch exch-${exchOf(l.segment).toLowerCase()}`}>{exchOf(l.segment)}</span>
-          </div>
-          <DepthCard d={depth[optKey(l.securityId)]} />
-        </>
-      ) : <div className="depth-load">No contract at this strike.</div>}
-    </div>
-  );
+  const detail = (s, type) => {
+    const l = type === 'CE' ? s.ce : s.pe;
+    return (
+      <div className={`opt-depth ${type === 'CE' ? 'ce' : 'pe'}`}>
+        {l ? (
+          <>
+            <div className="opt-depth-h">
+              <span className={`opt-depth-leg ${type === 'CE' ? 'ce' : 'pe'}`}>{type === 'CE' ? 'CALL' : 'PUT'}</span>
+              <b>{l.dhanSymbol}</b>
+              <span className={`exch exch-${exchOf(l.segment).toLowerCase()}`}>{exchOf(l.segment)}</span>
+            </div>
+            <DepthCard d={depth[optKey(l.securityId)]} />
+            <BuyBar leg={l} type={type} strike={s.strike} lot={s.lot || 1} d={depth[optKey(l.securityId)]} pos={positions[l.securityId]} busy={busy} onBuy={doBuy} />
+          </>
+        ) : <div className="depth-load">No contract at this strike.</div>}
+      </div>
+    );
+  };
 
   return (
     <div className="opt-wrap">
@@ -131,8 +183,8 @@ export default function OptionLadder({ symbol, spot, dir }) {
             </div>
             {open === s.strike && (
               <div className="opt-depth-pair">
-                {detail(s.ce, 'CE')}
-                {detail(s.pe, 'PE')}
+                {detail(s, 'CE')}
+                {detail(s, 'PE')}
               </div>
             )}
           </div>

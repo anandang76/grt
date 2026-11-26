@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BrokerController;
 use App\Http\Controllers\CandlesController;
 use App\Http\Controllers\OptionsController;
+use App\Http\Controllers\PaperController;
 use App\Http\Controllers\WatchlistController;
 use App\Services\TickerToken;
 use App\Support\DhanCredentials;
@@ -68,6 +69,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/instruments', [WatchlistController::class, 'instruments']);
     Route::get('/candles/{symbol}', [CandlesController::class, 'show']);
     Route::get('/options/{symbol}', [OptionsController::class, 'chain'])->where('symbol', '.*');
+
+    // Paper trading (long CE/PE only).
+    Route::get('/paper/positions', [PaperController::class, 'index']);
+    Route::get('/paper/positions/{id}', [PaperController::class, 'show']);
+    Route::post('/paper/positions', [PaperController::class, 'store']);
+    Route::post('/paper/positions/{id}/squareoff', [PaperController::class, 'squareOff']);
 
     // Shared Dhan API credentials — any logged-in user may view and update.
     // Client ID is set once; the access token is re-entered daily — updated separately.

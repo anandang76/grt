@@ -146,6 +146,7 @@ function SidebarNav() {
         <div className="wl-nav-links">
           {isAdmin(user) && <NavLink to="/admin" onClick={close}>Admin panel</NavLink>}
           <NavLink to="/watchlist" onClick={close}>Configure watchlist</NavLink>
+          <NavLink to="/positions" onClick={close}>Paper positions</NavLink>
           <NavLink to="/broker" onClick={close}>Dhan API token</NavLink>
           <NavLink to="/profile" onClick={close}>Profile &amp; password</NavLink>
           <button type="button" onClick={doLogout}>Log out</button>
@@ -250,7 +251,9 @@ export default function Home() {
                   )}
                 </div>
               </Panel>
-              <Panel title="Positions" storageKey="grt_p_positions" defaultOpen={false}><PanelPlaceholder hint="Open positions & P&L" /></Panel>
+              <Panel title="Positions" storageKey="grt_p_positions" defaultOpen={false}>
+                <Link to="/positions" className="panel-link">Open paper positions &amp; P&amp;L →</Link>
+              </Panel>
               <Panel title="Orders" storageKey="grt_p_orders" defaultOpen={false}><PanelPlaceholder hint="Order book" /></Panel>
               <Panel title="Holdings" storageKey="grt_p_holdings" defaultOpen={false}><PanelPlaceholder hint="Portfolio holdings" /></Panel>
             </div>

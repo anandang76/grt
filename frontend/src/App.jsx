@@ -14,6 +14,7 @@ const Terms = lazy(() => import('./pages/Terms'));
 const Home = lazy(() => import('./pages/Home'));
 const Watchlist = lazy(() => import('./pages/Watchlist'));
 const Broker = lazy(() => import('./pages/Broker'));
+const Positions = lazy(() => import('./pages/Positions'));
 const Profile = lazy(() => import('./pages/Profile'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="terms" element={<Terms />} />
           <Route element={<RequireAuth />}>
             <Route path="broker" element={<Broker />} />
+            <Route path="positions" element={<Positions />} />
           </Route>
           <Route element={<RequireAuth roles={['admin', 'superadmin']} />}>
             <Route path="admin" element={<AdminLayout />}>
