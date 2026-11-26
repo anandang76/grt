@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loading } from '../components/ui';
 import { useOptionFeed } from '../hooks/useOptionFeed';
@@ -7,7 +7,9 @@ import { bestBid, getPositions, squareOff } from '../lib/paper';
 import { fmtPrice } from '../lib/format';
 
 const exchOf = (seg) => (seg === 'BSE_FNO' ? 'BSE' : seg === 'MCX_COMM' ? 'MCX' : 'NSE');
-const signed = (v) => (v == null ? '—' : `${v >= 0 ? '+' : '−'}${fmtPrice(Math.abs(v))}`);
+const nf = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
+const money = (v) => (v == null ? '—' : nf.format(v));
+const signed = (v) => (v == null ? '—' : `${v >= 0 ? '+' : '−'}${nf.format(Math.abs(v))}`);
 const fmtWhen = (iso) => (iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) : '');
 
 export default function Positions() {
@@ -22,7 +24,6 @@ export default function Positions() {
   const open = positions.filter((p) => p.status === 'open');
   const closed = positions.filter((p) => p.status === 'closed');
 
-  // Live depth for open positions only (LTP + the bid you'd actually sell into).
   const sig = open.map((p) => p.security_id).join(',');
   const instruments = useMemo(() => open.map((p) => ({ key: optKey(p.security_id), segment: p.segment, securityId: p.security_id })), [sig]); // eslint-disable-line react-hooks/exhaustive-deps
   const { ticks, depth } = useOptionFeed(instruments);
@@ -30,9 +31,14 @@ export default function Positions() {
   const liveOf = (p) => {
     const d = depth[optKey(p.security_id)];
     const ltp = ticks[optKey(p.security_id)]?.ltp ?? d?.ltp ?? null;
-    const sell = bestBid(d);                              // what you'd receive squaring off now
-    const pnl = sell != null ? (sell - p.avg_price) * p.qty : null;
-    return { ltp, sell, pnl };
+    const sell = bestBid(d);                                   // the bid you'd actually sell into
+    return {
+      ltp,
+      sell,
+      ltpVal: ltp != null ? ltp * p.qty : null,
+      sellVal: sell != null ? sell * p.qty : null,
+      pnl: sell != null ? (sell - p.avg_price) * p.qty : null,
+    };
   };
 
   const square = async (p) => {
@@ -47,81 +53,114 @@ export default function Positions() {
 
   if (data === null) return <Loading />;
 
-  const openPnl = open.reduce((a, p) => a + (liveOf(p).pnl || 0), 0);
+  const live = open.map((p) => ({ p, l: liveOf(p) }));
+  const tot = live.reduce((a, { p, l }) => ({
+    bought: a.bought + p.bought_value,
+    ltpVal: a.ltpVal + (l.ltpVal || 0),
+    sellVal: a.sellVal + (l.sellVal || 0),
+    pnl: a.pnl + (l.pnl || 0),
+  }), { bought: 0, ltpVal: 0, sellVal: 0, pnl: 0 });
   const realized = closed.reduce((a, p) => a + (p.realized_pnl || 0), 0);
 
   return (
-    <div className="card">
+    <div className="card pos-page">
       <div className="pos-head">
         <h1>Paper positions</h1>
-        <Link className="btn btn-sm btn-line" to="/home">Back to terminal</Link>
+        <div className="pos-head-r">
+          <button type="button" className="btn btn-sm btn-line" onClick={load}>↻ Refresh</button>
+          <Link className="btn btn-sm btn-line" to="/home">Terminal</Link>
+        </div>
       </div>
-      <p className="sub">Long CE/PE only. Buy fills at the ask; squaring off sells at the bid. The LTP and the sell (bid) often differ — P&amp;L uses the bid you’d actually get.</p>
+      <p className="sub">Long CE/PE only. Buy fills at the ask; squaring off sells at the bid. P&amp;L uses the live bid — the LTP and the executable sell price often differ.</p>
 
       <div className="pos-summary">
-        <div><span className="muted">Open P&amp;L (live)</span><b className={openPnl >= 0 ? 'pos' : 'neg'}>{open.length ? signed(openPnl) : '—'}</b></div>
+        <div><span className="muted">Open P&amp;L (live)</span><b className={tot.pnl >= 0 ? 'pos' : 'neg'}>{open.length ? signed(tot.pnl) : '—'}</b></div>
+        <div><span className="muted">LTP value (total)</span><b>{open.length ? money(tot.ltpVal) : '—'}</b></div>
+        <div><span className="muted">Sell value (total)</span><b className="sell-px">{open.length ? money(tot.sellVal) : '—'}</b></div>
+        <div><span className="muted">Bought (total)</span><b>{open.length ? money(tot.bought) : '—'}</b></div>
         <div><span className="muted">Realized</span><b className={realized >= 0 ? 'pos' : 'neg'}>{closed.length ? signed(realized) : '—'}</b></div>
-        <div><span className="muted">Open / Closed</span><b>{open.length} / {closed.length}</b></div>
       </div>
 
-      <h2 className="pos-h2">Open</h2>
+      <h2 className="pos-h2">Open · {open.length}</h2>
       {open.length === 0 ? <div className="empty">No open positions. Buy a CE/PE from the option ladder on the terminal.</div> : (
-        <div className="pos-list">
-          {open.map((p) => {
-            const { ltp, sell, pnl } = liveOf(p);
-            return (
-              <div className="pos-card" key={p.id}>
-                <div className="pos-row">
-                  <div className="pos-sym">
-                    <b>{p.dhan_symbol || `${p.underlying} ${p.strike} ${p.option_type}`}</b>
-                    <span className={`exch exch-${exchOf(p.segment).toLowerCase()}`}>{exchOf(p.segment)}</span>
-                  </div>
-                  <div className="pos-pnl"><span className="muted">P&amp;L</span><b className={pnl == null ? '' : pnl >= 0 ? 'pos' : 'neg'}>{pnl == null ? '—' : signed(pnl)}</b></div>
-                </div>
-                <div className="pos-grid">
-                  <div><span>Qty</span><b>{p.qty}</b></div>
-                  <div><span>Avg buy</span><b>{fmtPrice(p.avg_price)}</b></div>
-                  <div><span>Bought</span><b>{fmtPrice(p.bought_value)}</b></div>
-                  <div><span>LTP</span><b>{ltp != null ? fmtPrice(ltp) : '—'}</b></div>
-                  <div><span>Sell (bid)</span><b className="sell-px">{sell != null ? fmtPrice(sell) : '—'}</b></div>
-                  <div><span>Stages</span><b>{(p.stages_done || []).join(' · ') || '—'}</b></div>
-                </div>
-                <div className="pos-actions">
-                  <button type="button" className="btn btn-sm btn-line" onClick={() => setViewId(viewId === p.id ? null : p.id)}>{viewId === p.id ? 'Hide' : 'View'}</button>
-                  <button type="button" className="btn btn-sm btn-danger" disabled={busyId === p.id} onClick={() => square(p)}>{busyId === p.id ? 'Squaring…' : 'Square off'}</button>
-                </div>
-                {viewId === p.id && (
-                  <div className="pos-fills">
-                    <div className="muted small">Fills · opened {fmtWhen(p.opened_at)}</div>
-                    {(p.fills || []).map((f, i) => (
-                      <div className="pos-fill" key={i}><span className="tag">{f.stage}</span><span>{f.qty} @ {fmtPrice(f.price)}</span><span className="muted">{fmtWhen(f.at)}</span></div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="pos-scroll">
+          <table className="pos-table">
+            <thead>
+              <tr>
+                <th>Symbol</th><th className="num">Qty</th><th className="num">Avg</th><th className="num">Bought</th>
+                <th className="num">LTP</th><th className="num">LTP value</th>
+                <th className="num">Sell (bid)</th><th className="num">Sell value</th>
+                <th className="num">P&amp;L</th><th className="acts"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {live.map(({ p, l }) => (
+                <Fragment key={p.id}>
+                  <tr>
+                    <td className="sym"><b>{p.dhan_symbol || `${p.underlying} ${p.strike} ${p.option_type}`}</b><span className={`exch exch-${exchOf(p.segment).toLowerCase()}`}>{exchOf(p.segment)}</span></td>
+                    <td className="num">{p.qty}</td>
+                    <td className="num">{fmtPrice(p.avg_price)}</td>
+                    <td className="num">{money(p.bought_value)}</td>
+                    <td className="num">{l.ltp != null ? fmtPrice(l.ltp) : '—'}</td>
+                    <td className="num">{money(l.ltpVal)}</td>
+                    <td className="num sell-px">{l.sell != null ? fmtPrice(l.sell) : '—'}</td>
+                    <td className="num sell-px">{money(l.sellVal)}</td>
+                    <td className={`num ${l.pnl == null ? '' : l.pnl >= 0 ? 'pos' : 'neg'}`}>{signed(l.pnl)}</td>
+                    <td className="acts">
+                      <button type="button" className="btn btn-xs btn-line" onClick={() => setViewId(viewId === p.id ? null : p.id)}>{viewId === p.id ? 'Hide' : 'View'}</button>
+                      <button type="button" className="btn btn-xs btn-danger" disabled={busyId === p.id} onClick={() => square(p)}>{busyId === p.id ? '…' : 'Square'}</button>
+                    </td>
+                  </tr>
+                  {viewId === p.id && (
+                    <tr className="pos-fills-row">
+                      <td colSpan={10}>
+                        <div className="pos-fills">
+                          <span className="muted small">Opened {fmtWhen(p.opened_at)} · fills:</span>
+                          {(p.fills || []).map((f, i) => (
+                            <span className="pos-fill" key={i}><span className="tag">{f.stage}</span>{f.qty} @ {fmtPrice(f.price)} <span className="muted">({fmtWhen(f.at)})</span></span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="pos-tot">
+                <td>Total</td><td className="num">{open.reduce((a, p) => a + p.qty, 0)}</td><td></td>
+                <td className="num">{money(tot.bought)}</td><td></td>
+                <td className="num">{money(tot.ltpVal)}</td><td></td>
+                <td className="num sell-px">{money(tot.sellVal)}</td>
+                <td className={`num ${tot.pnl >= 0 ? 'pos' : 'neg'}`}>{signed(tot.pnl)}</td><td></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       )}
 
       {closed.length > 0 && (
         <>
-          <h2 className="pos-h2">Closed</h2>
-          <div className="pos-list">
-            {closed.map((p) => (
-              <div className="pos-card closed" key={p.id}>
-                <div className="pos-row">
-                  <div className="pos-sym"><b>{p.dhan_symbol || `${p.underlying} ${p.strike} ${p.option_type}`}</b><span className={`exch exch-${exchOf(p.segment).toLowerCase()}`}>{exchOf(p.segment)}</span></div>
-                  <div className="pos-pnl"><span className="muted">Realized</span><b className={(p.realized_pnl || 0) >= 0 ? 'pos' : 'neg'}>{signed(p.realized_pnl)}</b></div>
-                </div>
-                <div className="pos-grid">
-                  <div><span>Qty</span><b>{p.qty}</b></div>
-                  <div><span>Avg buy</span><b>{fmtPrice(p.avg_price)}</b></div>
-                  <div><span>Exit</span><b>{fmtPrice(p.exit_price)}</b></div>
-                  <div><span>Closed</span><b>{fmtWhen(p.closed_at)}</b></div>
-                </div>
-              </div>
-            ))}
+          <h2 className="pos-h2">Closed · {closed.length}</h2>
+          <div className="pos-scroll">
+            <table className="pos-table">
+              <thead>
+                <tr><th>Symbol</th><th className="num">Qty</th><th className="num">Avg</th><th className="num">Exit</th><th className="num">Realized</th><th className="num">Closed</th></tr>
+              </thead>
+              <tbody>
+                {closed.map((p) => (
+                  <tr key={p.id}>
+                    <td className="sym"><b>{p.dhan_symbol || `${p.underlying} ${p.strike} ${p.option_type}`}</b><span className={`exch exch-${exchOf(p.segment).toLowerCase()}`}>{exchOf(p.segment)}</span></td>
+                    <td className="num">{p.qty}</td>
+                    <td className="num">{fmtPrice(p.avg_price)}</td>
+                    <td className="num">{fmtPrice(p.exit_price)}</td>
+                    <td className={`num ${(p.realized_pnl || 0) >= 0 ? 'pos' : 'neg'}`}>{signed(p.realized_pnl)}</td>
+                    <td className="num">{fmtWhen(p.closed_at)}</td>
+                  </tr>
+                ))}
+                <tr className="pos-tot"><td>Total</td><td></td><td></td><td></td><td className={`num ${realized >= 0 ? 'pos' : 'neg'}`}>{signed(realized)}</td><td></td></tr>
+              </tbody>
+            </table>
           </div>
         </>
       )}
