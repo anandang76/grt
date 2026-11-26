@@ -159,7 +159,7 @@ footer{border-top:1px solid var(--line);background:var(--card);padding:16px 0 ca
 .terminal.collapsed{grid-template-columns:1fr}
 .terminal.collapsed .wl-side{display:none}
 .wl-side{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-@media(min-width:800px){.wl-side{position:sticky;top:70px}}
+@media(min-width:800px){.wl-side{position:sticky;top:8px}}
 .wl-side-h{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
 .wl-side-h span{flex:1}
 .wl-edit{font-size:12px;text-transform:none;letter-spacing:0}
@@ -340,7 +340,7 @@ main.bare-main{padding-top:0;padding-bottom:6px;min-height:100vh}
 
 /* ---------- Combined signal badge (floating left) ---------- */
 .charts-wrap{position:relative}
-.charts-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 2px 4px;min-height:30px}
+.charts-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 2px 4px;min-height:0;margin-top:0}
 .charts-top-sym{font-weight:700;font-size:14px}
 .signal-badge{position:absolute;z-index:6;cursor:grab;touch-action:none;display:flex;flex-direction:column;align-items:center;gap:3px;
   padding:10px 12px;border-radius:12px;min-width:92px;box-shadow:0 6px 20px rgba(0,0,0,.18);border:1px solid;background:var(--card)}
