@@ -8,28 +8,6 @@ const fmtExpiry = (iso) => (iso ? new Intl.DateTimeFormat('en-IN', { day: '2-dig
 const qty = (n) => (n ?? 0).toLocaleString('en-IN');
 const exchOf = (seg) => (seg === 'BSE_FNO' ? 'BSE' : seg === 'MCX_COMM' ? 'MCX' : 'NSE');
 
-// Buy / Avg1 / Avg2 — paper-buy this leg at the live ask. Stages fill in order; done ones disable.
-function BuyBar({ leg, type, strike, lot, d, pos, busy, onBuy }) {
-  const ask = bestAsk(d);
-  const done = new Set(pos?.stages_done || []);
-  const btn = (stage, label) => {
-    const prevOk = stage === 'buy' || (stage === 'avg1' && done.has('buy')) || (stage === 'avg2' && done.has('avg1'));
-    const disabled = done.has(stage) || !prevOk || ask == null || busy;
-    return (
-      <button type="button" className={`pt-btn ${type === 'CE' ? 'ce' : 'pe'}${done.has(stage) ? ' done' : ''}`} disabled={disabled} onClick={() => onBuy(leg, type, strike, lot, stage, ask)}>
-        {done.has(stage) ? `✓ ${label}` : label}
-      </button>
-    );
-  };
-  return (
-    <div className="pt-bar">
-      <span className="pt-ask">Buy @ {ask != null ? fmtPrice(ask) : '—'}</span>
-      <div className="pt-btns">{btn('buy', 'Buy')}{btn('avg1', 'Avg1')}{btn('avg2', 'Avg2')}</div>
-      {pos && <span className="pt-held">Held {pos.qty} @ {fmtPrice(pos.avg_price)}</span>}
-    </div>
-  );
-}
-
 // Zerodha/Dhan-style 5-level market depth for one option leg (fed live by the websocket).
 function DepthCard({ d }) {
   if (!d) return <div className="depth-load">Loading depth…</div>;
@@ -126,18 +104,37 @@ export default function OptionLadder({ symbol, spot, dir }) {
 
   const toggle = (strike) => setOpen((o) => (o === strike ? null : strike));
 
-  const leg = (l, type, strike) => {
+  const leg = (l, type, strike, lot) => {
     if (!l) return <span className="opt-cell empty" />;
     const key = optKey(l.securityId);
     const d = depth[key];
     const ltp = ticks[key]?.ltp ?? d?.ltp;
     const chg = d?.prevClose ? ((d.ltp - d.prevClose) / d.prevClose) * 100 : null;
     const hot = (dir === 'up' && type === 'CE') || (dir === 'down' && type === 'PE');
+    const ask = bestAsk(d);
+    const pos = positions[l.securityId];
+    const done = new Set(pos?.stages_done || []);
+    const stageBtn = (stage, label) => {
+      const prevOk = stage === 'buy' || (stage === 'avg1' && done.has('buy')) || (stage === 'avg2' && done.has('avg1'));
+      const disabled = done.has(stage) || !prevOk || ask == null || busy;
+      return (
+        <button type="button" className={`pt-btn ${type === 'CE' ? 'ce' : 'pe'}${done.has(stage) ? ' done' : ''}`} disabled={disabled} onClick={() => doBuy(l, type, strike, lot, stage, ask)}>
+          {done.has(stage) ? '✓' : label}
+        </button>
+      );
+    };
     return (
-      <button type="button" className={`opt-cell ${type === 'CE' ? 'ce' : 'pe'}${hot ? ' hot' : ''}${open === strike ? ' open' : ''}`} onClick={() => toggle(strike)} title={l.dhanSymbol}>
-        <span className="opt-ltp">{ltp != null ? fmtPrice(ltp) : '—'}</span>
-        {chg != null && <span className={`opt-chg ${chg >= 0 ? 'pos' : 'neg'}`}>{chg >= 0 ? '+' : ''}{chg.toFixed(1)}%</span>}
-      </button>
+      <div className={`opt-cell ${type === 'CE' ? 'ce' : 'pe'}${hot ? ' hot' : ''}${open === strike ? ' open' : ''}`}>
+        <button type="button" className="opt-px" onClick={() => toggle(strike)} title={`${l.dhanSymbol} — tap for depth`}>
+          <span className="opt-ltp">{ltp != null ? fmtPrice(ltp) : '—'}</span>
+          {chg != null && <span className={`opt-chg ${chg >= 0 ? 'pos' : 'neg'}`}>{chg >= 0 ? '+' : ''}{chg.toFixed(1)}%</span>}
+          {pos && <span className="opt-held">×{pos.qty}</span>}
+        </button>
+        <div className="opt-buy">
+          <span className="opt-buy-ask">@{ask != null ? fmtPrice(ask) : '—'}</span>
+          {stageBtn('buy', 'Buy')}{stageBtn('avg1', 'Avg1')}{stageBtn('avg2', 'Avg2')}
+        </div>
+      </div>
     );
   };
 
@@ -153,7 +150,6 @@ export default function OptionLadder({ symbol, spot, dir }) {
               <span className={`exch exch-${exchOf(l.segment).toLowerCase()}`}>{exchOf(l.segment)}</span>
             </div>
             <DepthCard d={depth[optKey(l.securityId)]} />
-            <BuyBar leg={l} type={type} strike={s.strike} lot={s.lot || 1} d={depth[optKey(l.securityId)]} pos={positions[l.securityId]} busy={busy} onBuy={doBuy} />
           </>
         ) : <div className="depth-load">No contract at this strike.</div>}
       </div>
@@ -177,9 +173,9 @@ export default function OptionLadder({ symbol, spot, dir }) {
         {[...win].reverse().map((s) => (
           <div className="opt-strike" key={s.strike}>
             <div className={`opt-row${s.atm ? ' atm' : ''}`}>
-              {leg(s.ce, 'CE', s.strike)}
+              {leg(s.ce, 'CE', s.strike, s.lot || 1)}
               <button type="button" className="opt-k" onClick={() => toggle(s.strike)}>{s.strike}{s.atm && <em>ATM</em>}</button>
-              {leg(s.pe, 'PE', s.strike)}
+              {leg(s.pe, 'PE', s.strike, s.lot || 1)}
             </div>
             {open === s.strike && (
               <div className="opt-depth-pair">
