@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import Chart from '../components/Chart';
+import OptionLadder from '../components/OptionLadder';
 import { Loading } from '../components/ui';
 import { useLiveCandles } from '../hooks/useLiveCandles';
 import { useTicker } from '../hooks/useTicker';
@@ -122,6 +123,11 @@ function SymbolCharts({ symbol, kind, tick, live }) {
           </div>
         )}
       </div>
+      {oneMin.length > 0 && (() => {
+        const combo = combineSignal(p1, p5);
+        const hotDir = combo.level === 'strong-buy' ? 'up' : combo.level === 'strong-sell' ? 'down' : 'flat';
+        return <OptionLadder symbol={symbol} spot={tick?.ltp ?? oneMin.at(-1)?.close} dir={hotDir} />;
+      })()}
     </div>
   );
 }
@@ -181,6 +187,14 @@ export default function Home() {
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem(COLLAPSE_KEY) === '1'; } catch { return false; }
   });
+  const [wlOnly, setWlOnly] = useState(() => {
+    try { return localStorage.getItem('grt_wl_only') === '1'; } catch { return false; }
+  });
+  const toggleWlOnly = () => setWlOnly((v) => {
+    const n = !v;
+    try { localStorage.setItem('grt_wl_only', n ? '1' : '0'); } catch { /* ignore */ }
+    return n;
+  });
 
   useEffect(() => { getWatchlist().then((r) => setWl(r.watchlist)).catch(() => setWl([])); }, []);
 
@@ -222,14 +236,18 @@ export default function Home() {
                 title="Watchlist"
                 storageKey="grt_p_watchlist"
                 extra={<>
+                  <button type="button" className="wl-shrink" onClick={toggleWlOnly} title={wlOnly ? 'Show all symbols' : 'Collapse to selected only'} aria-label="Toggle watchlist size">{wlOnly ? '▾' : '▴'}</button>
                   <span className={`live-dot live-${status}`} title={status === 'live' ? 'Market open' : 'Market closed'} />
                   <Link to="/watchlist" className="wl-edit">Edit</Link>
                 </>}
               >
                 <div className="wl-rows">
-                  {wl.map((item) => (
+                  {(wlOnly && active ? wl.filter((w) => w.symbol === active) : wl).map((item) => (
                     <SymbolRow key={item.symbol} item={item} liveLtp={ticks[item.symbol]?.ltp} active={item.symbol === active} onClick={() => select(item.symbol)} />
                   ))}
+                  {wlOnly && wl.length > 1 && (
+                    <button type="button" className="wl-more" onClick={toggleWlOnly}>▾ Show all {wl.length}</button>
+                  )}
                 </div>
               </Panel>
               <Panel title="Positions" storageKey="grt_p_positions" defaultOpen={false}><PanelPlaceholder hint="Open positions & P&L" /></Panel>
