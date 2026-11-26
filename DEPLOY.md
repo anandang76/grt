@@ -1,19 +1,19 @@
 # Deploying GR Trading to a Hostinger VPS
 
 A practical, step-by-step guide. Assumes a fresh **Ubuntu 22.04/24.04** Hostinger VPS, a domain
-you control (e.g. `app.grfintech.in`) pointed at the VPS IP, and SSH root access.
+you control (e.g. `trade.grfintech.in`) pointed at the VPS IP, and SSH root access.
 
 Stack: **Laravel 13 (PHP 8.3 + MySQL)** API, **React/Vite** SPA served by Laravel, a **Node**
 websocket tick service, and **cron** for the scheduler.
 
-Replace `app.grfintech.in` with your domain and `/var/www/grt` with your chosen path throughout.
+Replace `trade.grfintech.in` with your domain and `/var/www/grt` with your chosen path throughout.
 
 ---
 
 ## 0. One-time: DNS
 
-In Hostinger (or your DNS), create an **A record**: `app` → your VPS IP. Wait for it to resolve
-(`ping app.grfintech.in`).
+In Hostinger (or your DNS), create an **A record**: `trade` → your VPS IP. Wait for it to resolve
+(`ping trade.grfintech.in`).
 
 ---
 
@@ -98,7 +98,7 @@ Set these in `backend/.env` (the important production values):
 APP_NAME="GR Trading"
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://app.grfintech.in
+APP_URL=https://trade.grfintech.in
 APP_TIMEZONE=Asia/Kolkata
 
 DB_CONNECTION=mysql
@@ -120,13 +120,13 @@ MAIL_FROM_ADDRESS=youraddress@gmail.com
 MAIL_FROM_NAME="GR Trading"
 
 # SPA is same-origin in production
-SANCTUM_STATEFUL_DOMAINS=app.grfintech.in
+SANCTUM_STATEFUL_DOMAINS=trade.grfintech.in
 SESSION_SECURE_COOKIE=true
 SESSION_EXPIRE_ON_CLOSE=true
-FRONTEND_URL=https://app.grfintech.in
+FRONTEND_URL=https://trade.grfintech.in
 
 # Tick service (wss proxied by Nginx — see step 10)
-TICKER_URL=wss://app.grfintech.in/ws
+TICKER_URL=wss://trade.grfintech.in/ws
 TICKER_SECRET=generate-a-long-random-string
 
 # Optional Google login
@@ -184,10 +184,10 @@ PORT=8090
 FEED=dhan
 BACKEND_URL=http://127.0.0.1:8000     # Laravel reachable locally; see note below
 TICKER_SECRET=the-same-secret-as-backend-.env
-ALLOWED_ORIGINS=https://app.grfintech.in
+ALLOWED_ORIGINS=https://trade.grfintech.in
 ```
 > `BACKEND_URL` is how the tick service reaches Laravel for the Dhan token + securityId map.
-> If PHP-FPM is served only through Nginx (no local :8000), set `BACKEND_URL=https://app.grfintech.in`.
+> If PHP-FPM is served only through Nginx (no local :8000), set `BACKEND_URL=https://trade.grfintech.in`.
 
 Start it and enable on boot:
 ```bash
@@ -203,7 +203,7 @@ Create `/etc/nginx/sites-available/grt`:
 ```nginx
 server {
     listen 80;
-    server_name app.grfintech.in;
+    server_name trade.grfintech.in;
     root /var/www/grt/backend/public;
     index index.php;
 
@@ -241,7 +241,7 @@ nginx -t && systemctl reload nginx
 
 # Free SSL via Let's Encrypt
 apt install -y certbot python3-certbot-nginx
-certbot --nginx -d app.grfintech.in     # choose redirect HTTP->HTTPS
+certbot --nginx -d trade.grfintech.in     # choose redirect HTTP->HTTPS
 ```
 
 Certbot rewrites the server block to listen on 443 with the certs and auto-renews.
@@ -266,7 +266,7 @@ timedatectl set-timezone Asia/Kolkata
 
 ## 12. First login & data
 
-1. Open `https://app.grfintech.in` and log in with the Super Admin from step 6.
+1. Open `https://trade.grfintech.in` and log in with the Super Admin from step 6.
 2. Go to **Dhan API token** and enter the Client ID (once) and today's access token.
 3. Go to **Admin → History data** and pull a month for the symbols you watch (or wait for the cron).
 4. The live feed starts streaming once the token is set and the market is open.
