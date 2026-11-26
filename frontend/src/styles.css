@@ -479,6 +479,8 @@ main.bare-main{padding-top:0;padding-bottom:6px;min-height:100vh}
 .btn-xs{height:26px;padding:0 9px;font-size:12px}
 .pos-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r)}
 .pos-table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pos-table.fixed{table-layout:fixed;min-width:860px}
+.pos-table td.num,.pos-table th.num{overflow:hidden;text-overflow:ellipsis}
 .pos-table th,.pos-table td{padding:7px 12px;border-bottom:1px solid var(--line);text-align:left}
 .pos-table th{position:sticky;top:0;background:var(--card);z-index:1;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:600}
 .pos-table th.num,.pos-table td.num{text-align:right}

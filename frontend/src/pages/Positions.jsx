@@ -7,7 +7,7 @@ import { bestBid, getPositions, squareOff } from '../lib/paper';
 import { fmtPrice } from '../lib/format';
 
 const exchOf = (seg) => (seg === 'BSE_FNO' ? 'BSE' : seg === 'MCX_COMM' ? 'MCX' : 'NSE');
-const nf = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
+const nf = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const signed = (v) => (v == null ? '—' : `${v >= 0 ? '+' : '−'}${nf.format(Math.abs(v))}`);
 const pnlClass = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
 const fmtWhen = (iso) => (iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) : '');
@@ -69,7 +69,11 @@ export default function Positions() {
 
       {open.length === 0 ? <div className="empty">No open positions. Buy a CE/PE from the option ladder on the terminal.</div> : (
         <div className="pos-scroll">
-          <table className="pos-table">
+          <table className="pos-table fixed">
+            <colgroup>
+              <col style={{ width: '120px' }} /><col /><col style={{ width: '66px' }} /><col style={{ width: '96px' }} />
+              <col style={{ width: '96px' }} /><col style={{ width: '104px' }} /><col style={{ width: '116px' }} /><col style={{ width: '124px' }} /><col style={{ width: '116px' }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>Trade time</th><th>Symbol</th><th className="num">Qty</th><th className="num">Buy price</th>
