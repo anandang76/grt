@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Loading } from '../components/ui';
 import { useOptionFeed } from '../hooks/useOptionFeed';
 import { optKey } from '../lib/options';
-import { bestBid, getPositions, squareOff } from '../lib/paper';
+import { bestAsk, bestBid, buyLeg, getPositions, squareOff } from '../lib/paper';
 import { fmtPrice } from '../lib/format';
 
 const exchOf = (seg) => (seg === 'BSE_FNO' ? 'BSE' : seg === 'MCX_COMM' ? 'MCX' : 'NSE');
@@ -23,9 +23,30 @@ export default function Positions() {
   const open = positions.filter((p) => p.status === 'open');
   const closed = positions.filter((p) => p.status === 'closed');
 
-  const sig = open.map((p) => p.security_id).join(',');
-  const instruments = useMemo(() => open.map((p) => ({ key: optKey(p.security_id), segment: p.segment, securityId: p.security_id })), [sig]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Stream every contract we hold or held (deduped) so closed rows can show live LTP + a rebuy price.
+  const sig = positions.map((p) => p.security_id).join(',');
+  const instruments = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const p of positions) if (!seen.has(p.security_id)) { seen.add(p.security_id); out.push({ key: optKey(p.security_id), segment: p.segment, securityId: p.security_id }); }
+    return out;
+  }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
   const { ticks, depth } = useOptionFeed(instruments);
+
+  const ltpOf = (p) => ticks[optKey(p.security_id)]?.ltp ?? depth[optKey(p.security_id)]?.ltp ?? null;
+  const askOf = (p) => bestAsk(depth[optKey(p.security_id)]);
+
+  const rebuy = async (p) => {
+    const ask = askOf(p) ?? ltpOf(p);
+    if (ask == null) { window.alert('No live price yet — wait for the depth to stream.'); return; }
+    if (!window.confirm(`Rebuy ${p.dhan_symbol} — buy ${p.qty || p.lot_size} @ ${fmtPrice(ask)} (ask)?`)) return;
+    setBusyId(`r${p.id}`);
+    try {
+      await buyLeg({ stage: 'buy', security_id: p.security_id, segment: p.segment, underlying: p.underlying, strike: p.strike, option_type: p.option_type, expiry: p.expiry, dhan_symbol: p.dhan_symbol, lot_size: p.lot_size || p.qty || 1, price: ask });
+      await load();
+    } catch { /* ignore */ }
+    setBusyId(null);
+  };
 
   const liveOf = (p) => {
     const d = depth[optKey(p.security_id)];
@@ -112,22 +133,32 @@ export default function Positions() {
         <>
           <h2 className="pos-h2">Closed · {closed.length}</h2>
           <div className="pos-scroll">
-            <table className="pos-table">
+            <table className="pos-table fixed">
+              <colgroup>
+                <col style={{ width: '120px' }} /><col /><col style={{ width: '66px' }} /><col style={{ width: '96px' }} />
+                <col style={{ width: '96px' }} /><col style={{ width: '124px' }} /><col style={{ width: '96px' }} /><col style={{ width: '120px' }} /><col style={{ width: '150px' }} />
+              </colgroup>
               <thead>
-                <tr><th>Trade time</th><th>Symbol</th><th className="num">Qty</th><th className="num">Buy price</th><th className="num">Exit</th><th className="num">Realized P&amp;L</th><th>Closed</th></tr>
+                <tr><th>Trade time</th><th>Symbol</th><th className="num">Qty</th><th className="num">Buy price</th><th className="num">Exit</th><th className="num">Realized P&amp;L</th><th className="num">LTP</th><th>Closed</th><th className="acts"></th></tr>
               </thead>
               <tbody>
-                {closed.map((p) => (
-                  <tr key={p.id}>
-                    <td className="when">{fmtWhen(p.opened_at)}</td>
-                    <td className="sym"><b>{p.dhan_symbol || `${p.underlying} ${p.strike} ${p.option_type}`}</b><span className={`exch exch-${exchOf(p.segment).toLowerCase()}`}>{exchOf(p.segment)}</span></td>
-                    <td className="num">{p.qty}</td>
-                    <td className="num">{fmtPrice(p.avg_price)}</td>
-                    <td className="num">{fmtPrice(p.exit_price)}</td>
-                    <td className={`num ${pnlClass(p.realized_pnl)}`}>{signed(p.realized_pnl)}</td>
-                    <td className="when">{fmtWhen(p.closed_at)}</td>
-                  </tr>
-                ))}
+                {closed.map((p) => {
+                  const ltp = ltpOf(p);
+                  const ask = askOf(p) ?? ltp;
+                  return (
+                    <tr key={p.id}>
+                      <td className="when">{fmtWhen(p.opened_at)}</td>
+                      <td className="sym"><b>{p.dhan_symbol || `${p.underlying} ${p.strike} ${p.option_type}`}</b><span className={`exch exch-${exchOf(p.segment).toLowerCase()}`}>{exchOf(p.segment)}</span></td>
+                      <td className="num">{p.qty}</td>
+                      <td className="num">{fmtPrice(p.avg_price)}</td>
+                      <td className="num">{fmtPrice(p.exit_price)}</td>
+                      <td className={`num ${pnlClass(p.realized_pnl)}`}>{signed(p.realized_pnl)}</td>
+                      <td className="num">{ltp != null ? fmtPrice(ltp) : '—'}</td>
+                      <td className="when">{fmtWhen(p.closed_at)}</td>
+                      <td className="acts"><button type="button" className="btn btn-xs btn-line" disabled={ask == null || busyId === `r${p.id}`} onClick={() => rebuy(p)}>{busyId === `r${p.id}` ? '…' : `Rebuy @ ${ask != null ? fmtPrice(ask) : '—'}`}</button></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
