@@ -71,7 +71,7 @@ export default function OptionLadder({ symbol, spot, dir }) {
     return out;
   }, [win]);
 
-  const { ticks, depth } = useOptionFeed(instruments, open);
+  const { ticks, depth } = useOptionFeed(instruments);
 
   if (failed || (chain && !chain.strikes.length)) return null;
   if (!chain) return <div className="opt-wrap"><div className="opt-head">Loading option chain…</div></div>;

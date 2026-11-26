@@ -3,24 +3,25 @@ import { api } from '../lib/api';
 
 /**
  * Live option prices + 5-level depth from the Node tick service, on a dedicated websocket (separate
- * from the watchlist feed in useTicker). `instruments` is [{ key, segment, securityId }]; the leg in
- * `fullKey` is subscribed in "full" mode to receive market depth. Subscriptions are diffed and only
- * the deltas are sent, so the connection is never torn down as the ladder re-centres or a card opens.
+ * from the watchlist feed in useTicker). `instruments` is [{ key, segment, securityId }]; every leg
+ * is subscribed in "full" mode so each card has LTP + prev-close (for %) + depth without a click.
+ * Subscriptions are diffed and only the deltas are sent, so the connection is never torn down as the
+ * ladder re-centres.
  */
-export function useOptionFeed(instruments, fullKey) {
+export function useOptionFeed(instruments) {
   const [ticks, setTicks] = useState({});
   const [depth, setDepth] = useState({});
   const [status, setStatus] = useState('connecting');
 
   const wsRef = useRef(null);
   const sentRef = useRef(new Map());   // key -> mode currently subscribed
-  const desiredRef = useRef({ list: [], fullKey: null });
+  const desiredRef = useRef({ list: [] });
   const syncRef = useRef(() => {});
   const pending = useRef({});
   const frame = useRef(null);
 
-  desiredRef.current = { list: instruments || [], fullKey: fullKey || null };
-  const sig = (instruments || []).map((i) => i.key).join('|') + '#' + (fullKey || '');
+  desiredRef.current = { list: instruments || [] };
+  const sig = (instruments || []).map((i) => i.key).join('|');
 
   useEffect(() => {
     let closed = false;
@@ -37,9 +38,9 @@ export function useOptionFeed(instruments, fullKey) {
     const sync = () => {
       const ws = wsRef.current;
       if (!ws || ws.readyState !== ws.OPEN) return;
-      const { list, fullKey: fk } = desiredRef.current;
+      const { list } = desiredRef.current;
       const want = new Map();
-      for (const it of list) want.set(it.key, { s: it.key, segment: it.segment, securityId: it.securityId, mode: it.key === fk ? 'full' : 'ticker' });
+      for (const it of list) want.set(it.key, { s: it.key, segment: it.segment, securityId: it.securityId, mode: 'full' });
 
       const subs = [];
       for (const [key, w] of want) {
