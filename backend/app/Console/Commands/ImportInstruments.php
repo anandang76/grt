@@ -30,6 +30,16 @@ class ImportInstruments extends Command
         // GIFTNIFTY is not in the NSE scrip master → left unmapped (demo data).
     ];
 
+    // Option underlying name (SM_SYMBOL_NAME in the scrip master) -> our index symbol.
+    private const INDEX_OPT = [
+        'NIFTY' => 'NIFTY 50',
+        'BANKNIFTY' => 'BANKNIFTY',
+        'SENSEX' => 'SENSEX',
+    ];
+
+    // Keep option expiries within this many days ahead so the chain table stays bounded.
+    private const OPT_HORIZON_DAYS = 75;
+
     public function handle(): int
     {
         $stocks = [];       // symbol => true (NSE equity)
@@ -51,25 +61,61 @@ class ImportInstruments extends Command
             return self::FAILURE;
         }
 
+        $now = now();
+        $today = CarbonImmutable::now('Asia/Kolkata')->format('Y-m-d');
+        $optHorizon = CarbonImmutable::now('Asia/Kolkata')->addDays(self::OPT_HORIZON_DAYS)->format('Y-m-d');
+
+        // Allow-set for option underlyings: SM_SYMBOL_NAME -> our symbol (stocks, commodities, indices).
+        $optAllow = [];
+        foreach (array_keys($stocks) as $sym) {
+            $optAllow[$sym] = $sym;
+        }
+        foreach (array_keys($commodities) as $sym) {
+            $optAllow[$sym] = $sym;
+        }
+        foreach (self::INDEX_OPT as $name => $sym) {
+            $optAllow[$name] = $sym;
+        }
+
         $fh = fopen($tmp, 'r');
         fgetcsv($fh); // header
         $found = [];
         $futByComm = []; // symbol => [[secId, expiry, dhanSym], ...]
+        $options = [];   // option_chain rows
 
         while (($row = fgetcsv($fh)) !== false) {
-            [$exch, $seg, $secId, $inst, , $tsym, , , $expiry, , , , , , $series, $symName] = array_pad($row, 16, '');
+            [$exch, $seg, $secId, $inst, , $tsym, $lot, $custom, $expiry, $strike, $optType, , , , $series, $symName] = array_pad($row, 16, '');
 
             if ($exch === 'NSE' && $seg === 'E' && $inst === 'EQUITY' && $series === 'EQ' && isset($stocks[$tsym])) {
                 $found[$tsym] = ['security_id' => $secId, 'segment' => 'NSE_EQ', 'instrument' => 'EQUITY', 'dhan_symbol' => $tsym, 'expiry' => null];
             } elseif ($exch === 'MCX' && $inst === 'FUTCOM' && isset($commodities[$symName])) {
                 $futByComm[$symName][] = ['security_id' => $secId, 'expiry' => substr($expiry, 0, 10), 'dhan_symbol' => $tsym];
+            } elseif (($inst === 'OPTSTK' || $inst === 'OPTIDX' || $inst === 'OPTFUT')
+                && ($optType === 'CE' || $optType === 'PE')) {
+                // Underlying comes from the human custom symbol ("EICHERMOT 26 NOV 8000 CALL"),
+                // since SM_SYMBOL_NAME is empty/cryptic for stock & index options.
+                $u = strtoupper(strtok($custom !== '' ? $custom : $symName, ' '));
+                $exp = substr($expiry, 0, 10);
+                if (isset($optAllow[$u]) && $exp >= $today && $exp <= $optHorizon) {
+                    $segment = $exch === 'BSE' ? 'BSE_FNO' : ($exch === 'MCX' ? 'MCX_COMM' : 'NSE_FNO');
+                    $options[] = [
+                        'underlying' => $optAllow[$u],
+                        'expiry' => $exp,
+                        'strike' => (float) $strike,
+                        'option_type' => $optType,
+                        'security_id' => $secId,
+                        'segment' => $segment,
+                        'dhan_symbol' => $custom ?: $tsym,
+                        'lot_size' => ((int) $lot) ?: null,
+                        'updated_at' => $now,
+                    ];
+                }
             }
         }
         fclose($fh);
         @unlink($tmp);
 
         // Commodities: pick the nearest contract that hasn't expired yet.
-        $today = CarbonImmutable::now('Asia/Kolkata')->format('Y-m-d');
         foreach ($futByComm as $sym => $contracts) {
             $future = array_filter($contracts, fn ($c) => $c['expiry'] >= $today);
             usort($future, fn ($a, $b) => strcmp($a['expiry'], $b['expiry']));
@@ -84,10 +130,35 @@ class ImportInstruments extends Command
             $found[$sym] = ['security_id' => $secId, 'segment' => $segment, 'instrument' => $inst, 'dhan_symbol' => $sym, 'expiry' => null];
         }
 
-        $now = now();
         foreach ($found as $sym => $m) {
             DB::table('instrument_map')->updateOrInsert(['symbol' => $sym], $m + ['updated_at' => $now]);
         }
+
+        // Rebuild the option chain. Stock options list on both NSE and BSE — prefer NSE (more
+        // liquid, matches the terminal's NSE tag); keep BSE/MCX only where there's no NSE chain.
+        $nseUnderlyings = [];
+        foreach ($options as $o) {
+            if ($o['segment'] === 'NSE_FNO') {
+                $nseUnderlyings[$o['underlying']] = true;
+            }
+        }
+        DB::table('option_chain')->truncate();
+        $seen = [];
+        $options = array_values(array_filter($options, function ($o) use (&$seen, $nseUnderlyings) {
+            if ($o['segment'] === 'BSE_FNO' && isset($nseUnderlyings[$o['underlying']])) {
+                return false; // drop BSE copy when an NSE chain exists for this underlying
+            }
+            if (isset($seen[$o['security_id']])) {
+                return false;
+            }
+            $seen[$o['security_id']] = true;
+            return true;
+        }));
+        foreach (array_chunk($options, 500) as $chunk) {
+            DB::table('option_chain')->insert($chunk);
+        }
+        $optUnderlyings = count(array_unique(array_column($options, 'underlying')));
+        $this->info('Imported '.count($options)." option contracts across $optUnderlyings underlyings.");
 
         $all = collect(Nifty50::all());
         $missing = $all->pluck('symbol')->reject(fn ($s) => isset($found[$s]));
