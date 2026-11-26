@@ -45,7 +45,7 @@ function SymbolRow({ item, liveLtp, active, onClick }) {
 }
 
 function useChartHeight() {
-  const calc = () => Math.max(320, Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.86));
+  const calc = () => Math.max(300, Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.62));
   const [h, setH] = useState(calc);
   useEffect(() => {
     let t;
