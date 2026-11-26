@@ -427,3 +427,18 @@ main.bare-main{padding-top:4px;padding-bottom:6px;min-height:100vh}
 .depth-today span{color:var(--muted)}
 .depth-today b{font-variant-numeric:tabular-nums}
 @media (max-width:560px){.depth-grid{grid-template-columns:1fr}.depth-today{grid-template-columns:repeat(2,1fr)}.opt-row,.opt-colh{grid-template-columns:1fr 64px 1fr}}
+
+/* ---- Paired CE/PE depth (click a strike -> both sides) ---- */
+.opt-k{border:0;background:none;font:inherit;color:inherit;cursor:pointer}
+.opt-k:hover{color:var(--pri)}
+.opt-depth-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 2px 2px;align-items:start}
+.opt-depth-pair .opt-depth{margin:0}
+.opt-depth-pair .depth-grid{gap:10px}
+.opt-depth-pair .depth-today{grid-template-columns:repeat(2,1fr)}
+.opt-depth.ce{border-color:color-mix(in srgb,var(--ok) 35%,var(--line))}
+.opt-depth.pe{border-color:color-mix(in srgb,var(--err) 35%,var(--line))}
+.opt-depth-leg{font-size:10px;font-weight:800;letter-spacing:.04em;padding:1px 6px;border-radius:4px;flex:0 0 auto}
+.opt-depth-leg.ce{color:var(--ok);background:var(--ok-soft)}
+.opt-depth-leg.pe{color:var(--err);background:var(--err-soft)}
+.opt-depth-h b{font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;min-width:0}
+@media(max-width:820px){.opt-depth-pair{grid-template-columns:1fr}}

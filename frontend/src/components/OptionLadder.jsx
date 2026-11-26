@@ -76,7 +76,9 @@ export default function OptionLadder({ symbol, spot, dir }) {
   if (failed || (chain && !chain.strikes.length)) return null;
   if (!chain) return <div className="opt-wrap"><div className="opt-head">Loading option chain…</div></div>;
 
-  const leg = (l, type) => {
+  const toggle = (strike) => setOpen((o) => (o === strike ? null : strike));
+
+  const leg = (l, type, strike) => {
     if (!l) return <span className="opt-cell empty" />;
     const key = optKey(l.securityId);
     const d = depth[key];
@@ -84,17 +86,25 @@ export default function OptionLadder({ symbol, spot, dir }) {
     const chg = d?.prevClose ? ((d.ltp - d.prevClose) / d.prevClose) * 100 : null;
     const hot = (dir === 'up' && type === 'CE') || (dir === 'down' && type === 'PE');
     return (
-      <button type="button" className={`opt-cell ${type === 'CE' ? 'ce' : 'pe'}${hot ? ' hot' : ''}${open === key ? ' open' : ''}`} onClick={() => setOpen((o) => (o === key ? null : key))} title={l.dhanSymbol}>
+      <button type="button" className={`opt-cell ${type === 'CE' ? 'ce' : 'pe'}${hot ? ' hot' : ''}${open === strike ? ' open' : ''}`} onClick={() => toggle(strike)} title={l.dhanSymbol}>
         <span className="opt-ltp">{ltp != null ? fmtPrice(ltp) : '—'}</span>
         {chg != null && <span className={`opt-chg ${chg >= 0 ? 'pos' : 'neg'}`}>{chg >= 0 ? '+' : ''}{chg.toFixed(1)}%</span>}
       </button>
     );
   };
 
-  const detail = (l) => l && (
-    <div className="opt-depth">
-      <div className="opt-depth-h"><b>{l.dhanSymbol}</b><span className={`exch exch-${exchOf(l.segment).toLowerCase()}`}>{exchOf(l.segment)}</span></div>
-      <DepthCard d={depth[optKey(l.securityId)]} />
+  const detail = (l, type) => (
+    <div className={`opt-depth ${type === 'CE' ? 'ce' : 'pe'}`}>
+      {l ? (
+        <>
+          <div className="opt-depth-h">
+            <span className={`opt-depth-leg ${type === 'CE' ? 'ce' : 'pe'}`}>{type === 'CE' ? 'CALL' : 'PUT'}</span>
+            <b>{l.dhanSymbol}</b>
+            <span className={`exch exch-${exchOf(l.segment).toLowerCase()}`}>{exchOf(l.segment)}</span>
+          </div>
+          <DepthCard d={depth[optKey(l.securityId)]} />
+        </>
+      ) : <div className="depth-load">No contract at this strike.</div>}
     </div>
   );
 
@@ -112,21 +122,21 @@ export default function OptionLadder({ symbol, spot, dir }) {
       </div>
       <div className="opt-chain">
         <div className="opt-colh"><span className="ce">CALL</span><span className="k">Strike</span><span className="pe">PUT</span></div>
-        {[...win].reverse().map((s) => {
-          const ceKey = s.ce && optKey(s.ce.securityId);
-          const peKey = s.pe && optKey(s.pe.securityId);
-          return (
-            <div className="opt-strike" key={s.strike}>
-              <div className={`opt-row${s.atm ? ' atm' : ''}`}>
-                {leg(s.ce, 'CE')}
-                <span className="opt-k">{s.strike}{s.atm && <em>ATM</em>}</span>
-                {leg(s.pe, 'PE')}
-              </div>
-              {open === ceKey && detail(s.ce)}
-              {open === peKey && detail(s.pe)}
+        {[...win].reverse().map((s) => (
+          <div className="opt-strike" key={s.strike}>
+            <div className={`opt-row${s.atm ? ' atm' : ''}`}>
+              {leg(s.ce, 'CE', s.strike)}
+              <button type="button" className="opt-k" onClick={() => toggle(s.strike)}>{s.strike}{s.atm && <em>ATM</em>}</button>
+              {leg(s.pe, 'PE', s.strike)}
             </div>
-          );
-        })}
+            {open === s.strike && (
+              <div className="opt-depth-pair">
+                {detail(s.ce, 'CE')}
+                {detail(s.pe, 'PE')}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
